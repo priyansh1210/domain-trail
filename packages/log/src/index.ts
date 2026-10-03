@@ -19,11 +19,16 @@ const SENSITIVE_KEYS = new Set([
   'secret',
 ]);
 
-const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+// Bounded parts and a start-of-run lookbehind keep matching linear (CodeQL js/polynomial-redos).
+const EMAIL = /(?<![\w.+-])[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63}){1,8}/g;
 const IPV4 = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
 const IPV6 = /\b(?:[0-9a-f]{1,4}:){2,7}[0-9a-f]{1,4}\b/gi;
 
-export function scrubText(text: string): string {
+/** Longest text kept in a log field; longer values are cut so scrubbing stays cheap. */
+const MAX_LOG_TEXT = 10_000;
+
+export function scrubText(input: string): string {
+  const text = input.length > MAX_LOG_TEXT ? `${input.slice(0, MAX_LOG_TEXT)}…[cut]` : input;
   return text.replace(EMAIL, '[email]').replace(IPV4, '[ip]').replace(IPV6, '[ip]');
 }
 

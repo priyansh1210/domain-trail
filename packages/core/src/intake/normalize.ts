@@ -12,8 +12,9 @@ const ZERO_WIDTH = /[\u200B-\u200D\u2060\uFEFF\u00AD]/g;
 // eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 const URL = /https?:\/\/\S+|www\.\S+/gi;
-const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
-const PHONE = /\+?\d[\d\s().-]{7,}\d/g;
+// Bounded parts and a start-of-run lookbehind keep matching linear (CodeQL js/polynomial-redos).
+const EMAIL = /(?<![\w.+-])[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63}){1,8}/g;
+const PHONE = /(?<![\d+])\+?\d[\d\s().-]{7,20}\d/g;
 
 export function normalize(raw: string): Normalized {
   let s = raw.normalize('NFKC').replace(ZERO_WIDTH, '').replace(CONTROL, '');
