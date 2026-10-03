@@ -31,6 +31,9 @@ export const serverEnvSchema = publicEnvSchema
     ALERT_CHANNEL: z.enum(['email', 'chat']).default('email'),
     // 'off' is honoured only together with MOCK_EXTERNALS=1 (local end-to-end tests); production always enforces.
     RATE_LIMIT_MODE: z.enum(['enforce', 'off']).default('enforce'),
+    // Free, keyless public data (DNS, RDAP, Porkbun prices, FX rates) is real even in mock mode so the public site
+    // never shows a simulated "available" (P3); tests and CI use recorded fixtures (tasks/M4-verify.md decision 1).
+    PUBLIC_DATA_MODE: z.enum(['live', 'fixture']).default('live'),
 
     SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
     SUPABASE_DB_URL: z.string().optional(),

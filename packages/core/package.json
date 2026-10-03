@@ -14,9 +14,12 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@domains-all/availability": "workspace:*",
     "@domains-all/config": "workspace:*",
+    "@domains-all/free-domains": "workspace:*",
     "@domains-all/jev": "workspace:*",
     "@domains-all/log": "workspace:*",
+    "@domains-all/pricing": "workspace:*",
     "transliteration": "^2.6.1",
     "uuidv7": "^1.2.1",
     "wink-eng-lite-web-model": "^1.8.1",

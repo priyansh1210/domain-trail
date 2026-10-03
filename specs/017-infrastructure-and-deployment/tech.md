@@ -61,6 +61,7 @@ N/A (infrastructure). Backups: spec 012 §5.4.
 | `ADMIN_USER_IDS` | server | `/ops/saved` admin view | 011 |
 | `GRIEVANCE_NAME`, `GRIEVANCE_EMAIL` | public | privacy page, contact page | 013 |
 | `PORKBUN_API_KEY`, `PORKBUN_SECRET_KEY` | Actions | accuracy, premium background | 005, 006 |
+| `PUBLIC_DATA_MODE` | server, Actions | `live` (default: real DNS, RDAP, Porkbun prices, FX even in mock mode) or `fixture` (tests, CI) | 005, 006, 007 |
 | `NRD_URL_TEMPLATE` | Actions (variable) | NRD ingest | 010 |
 | `SENTRY_DSN`, `SENTRY_AUTH_TOKEN` | server / CI | errors, source maps | 013, 015 |
 | `NEXT_PUBLIC_CF_ANALYTICS_TOKEN` | public | analytics | 009 |

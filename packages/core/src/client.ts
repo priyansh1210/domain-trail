@@ -5,3 +5,4 @@ export * from './intake/examples';
 export * from './features/types';
 export { TAXONOMY, INDUSTRY_OPTIONS, GROUP_LABELS, type Industry } from './features/seed/taxonomy';
 export type { Idea, Reason } from './ranking/score';
+export { type FreeConditions, type ResultItem, type Section, SECTIONS } from './results';

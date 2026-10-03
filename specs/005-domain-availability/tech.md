@@ -222,3 +222,20 @@ any host 429-rate > 30%, accuracy report below target (spec 015).
 ## 14. Risks and research links
 - R-03: RDAP limits for Verisign (.com/.net), PIR (.org), Identity Digital, Google Registry, CentralNic, Radix; ccTLDs without RDAP; DoH fair use.
 - Risk: reserved names return 404 → mitigated by accuracy sampling and per-TLD notes.
+
+## 15. Implementation notes (M4, 2026-10-04)
+- **Real checks in mock mode.** DoH and RDAP are free and keyless, so they run for real whenever
+  `PUBLIC_DATA_MODE=live` (the default), also while `MOCK_EXTERNALS=1`; tests and CI use recorded answers
+  (`PUBLIC_DATA_MODE=fixture`, `fixtureFetch`). Reason: P3 — a simulated "available" on the public site would be dishonest.
+- **Directory and wildcards without the daily job.** The IANA directory is a committed snapshot refreshed in memory every
+  12 hours per server instance; wildcard extensions are detected lazily (one random-label DoH query per extension per
+  12 hours). The M5 daily job (spec 010) will write both to `tlds`.
+- **Order and deadline.** A search checks up to 250 pairs within 12 seconds (`availability.searchDeadlineMs`). Names
+  are queued in score order, so with 5 requests/second per registry the best ~60 per registry are confirmed first; the
+  rest are "unknown" (late answers still fill the cache). Each name reserves its RDAP slot before waiting, so parallel
+  names never exceed the 120-per-search cap.
+- **No RDAP** for .io, .co, .us, .me, .de, .jp and others (research R-03): NXDOMAIN there gives "likely available".
+- The `domain_checks` cache adds unknown extensions to `tlds` on first use until the M5 registry job exists.
+- **Accuracy check** (§5.6): `pnpm eval:availability` / `monthly-availability-accuracy.yml` samples names generated for
+  the golden examples (stratified by extension) rather than the last 7 days of `domain_checks`, so it works before
+  Supabase is in use; it uses Porkbun's bulk `checkDomain` (25 per call, 200 per minute).

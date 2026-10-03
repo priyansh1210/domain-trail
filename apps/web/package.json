@@ -15,10 +15,13 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@domains-all/availability": "workspace:*",
     "@domains-all/config": "workspace:*",
     "@domains-all/core": "workspace:*",
+    "@domains-all/free-domains": "workspace:*",
     "@domains-all/jev": "workspace:*",
     "@domains-all/log": "workspace:*",
+    "@domains-all/pricing": "workspace:*",
     "@microsoft/fetch-event-source": "^2.0.1",
     "@supabase/supabase-js": "^2.117.2",
     "@upstash/ratelimit": "^2.2.0",
@@ -26,6 +29,7 @@
     "next": "^16.3.8",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "zod": "^4.6.5",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

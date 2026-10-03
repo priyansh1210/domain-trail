@@ -253,3 +253,17 @@ Metrics: price refresh success/age, TLD count priced, % results unpriced, % prem
 ## 14. Risks and research links
 - R-04 Porkbun pricing format/ToS; R-05 premium adapters; R-06 aftermarket; R-13 TLD policies (min years, restrictions).
 - Risk: single price source → optional extra PriceProviders (any registrar with a free public price list).
+
+## 15. Implementation notes (M4, 2026-10-04)
+- **Price book in memory.** Until the M5 job writes `tld_prices`/`fx_rates`, each server instance fetches Porkbun's
+  public list and Frankfurter (`api.frankfurter.dev/v1`) at most every 12 hours, with committed snapshots
+  (`packages/pricing/data/`) as fallback and fixtures; same sanity checks as §5.6.
+- **Extension policies** (`tld_policies`) start as `packages/pricing/data/tld-policies.json` (research R-13): 244
+  extensions; .ai has a 2-year minimum; 24 need local presence, 12 have eligibility rules; .app/.dev/.page need HTTPS.
+  61 pool extensions are not sold by Porkbun → "Price at registrar" (FR-PRC-016).
+- **"Premium price possible"** (FR-PRC-012) shows only for short (≤ 5 letters) or common-word labels on registries
+  with premium tiers; flagging every new-gTLD result would make the badge meaningless.
+- **Slider and URL state**: two native range inputs on one track (built-in keyboard and screen-reader support,
+  NFR-PRC-003) instead of Radix; the address is updated with `history.replaceState` instead of `nuqs`. Typed values
+  and presets use exact section boundaries ($0.01, $100.01, $300.01).
+- The FX table reaches the page in a `pricing` stream event and in the snapshot (spec 009 contract).

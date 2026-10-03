@@ -1,0 +1,21 @@
+{
+  "name": "@domains-all/free-domains",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@domains-all/availability": "workspace:*",
+    "@domains-all/config": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.3"
+  }
+}

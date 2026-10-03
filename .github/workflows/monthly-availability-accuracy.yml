@@ -1,0 +1,54 @@
+# Spec 005 tech §5.6 (FR-AVL-012, NFR-AVL-001/002; tasks/M4-verify.md H1): compares a sample of our "available" and
+# "taken" answers with a registrar's own check. Porkbun keys live only in the protected "production" environment,
+# so each run waits for the owner's approval. Results appear as annotations and in the run summary; the report is
+# saved on the `eval-reports` branch.
+name: monthly-availability-accuracy
+
+on:
+  schedule:
+    - cron: '30 4 2 * *' # 2nd of each month, 04:30 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: availability-accuracy
+  cancel-in-progress: false
+
+jobs:
+  accuracy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    permissions:
+      contents: write # only to save the report on the eval-reports branch
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Compare our answers with the registrar
+        env:
+          PUBLIC_DATA_MODE: live
+          PORKBUN_API_KEY: ${{ secrets.PORKBUN_API_KEY }}
+          PORKBUN_SECRET_KEY: ${{ secrets.PORKBUN_SECRET_KEY }}
+        run: pnpm eval:availability
+      - name: Save the report on the eval-reports branch
+        if: always()
+        run: |
+          report="packages/jev/eval/reports/availability-$(date -u +%F).md"
+          [ -f "$report" ] || exit 0
+          cp "$report" "$RUNNER_TEMP/report.md"
+          git reset --hard --quiet
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch --depth 1 origin eval-reports; then git switch -c eval-reports FETCH_HEAD; else git switch --orphan eval-reports; fi
+          mkdir -p reports
+          cp "$RUNNER_TEMP/report.md" "reports/availability-$(date -u +%F).md"
+          git add reports
+          git commit -m "Availability accuracy $(date -u +%F)" || exit 0
+          git push origin eval-reports

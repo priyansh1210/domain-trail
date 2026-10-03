@@ -19,6 +19,6 @@ export default defineConfig({
     url: `http://localhost:${PORT}/api/health`,
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { MOCK_EXTERNALS: '1', RATE_LIMIT_MODE: 'off' },
+    env: { MOCK_EXTERNALS: '1', RATE_LIMIT_MODE: 'off', PUBLIC_DATA_MODE: 'fixture' },
   },
 });

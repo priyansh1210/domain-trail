@@ -197,3 +197,13 @@ action events per position.
 
 ## 14. Risks and research links
 - R-09: streaming duration limits on Vercel Hobby functions (need ≥ 25 s).
+
+## 15. Implementation notes (M4, 2026-10-04)
+- New stream event **`pricing`** (FX table, price age, source) before the first `batch`; **`done`** carries the final
+  order per section (`sections`) and counts of shown results. The temporary M3 `ideas` event is gone.
+- While streaming, the page shows each section best-first with at most 3 extensions per name; at `done` it switches to
+  the server's final order (variety rules, spec 008 §5.5).
+- State stays in Zustand; URL state uses `history.replaceState` (no `nuqs`); the price slider uses two native range
+  inputs (no Radix). Results-page JavaScript measured at 174 KiB compressed (budget 250 KB).
+- Feedback (`POST /api/feedback`, body `searchRef`, answers 202) and re-check (`CheckResult` plus `price`) follow the
+  contract.

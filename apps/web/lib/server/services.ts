@@ -1,7 +1,17 @@
 // One set of server-side services per instance. Mock mode (MOCK_EXTERNALS=1) or missing configuration uses
 // in-process implementations so local development and previews work without accounts.
+import {
+  type Checker,
+  createChecker,
+  createDirectorySource,
+  fixtureFetch,
+  HostLimiter,
+  MemoryAvailabilityCache,
+} from '@domains-all/availability';
 import { MemoryWordCache, rulesMockHint, type WordCache } from '@domains-all/core';
-import { serverEnv, type ServerEnv } from '@domains-all/config';
+import { PIPELINE_VERSION, serverEnv, siteIdentity, type ServerEnv } from '@domains-all/config';
+import { createFreeChecker, type FreeChecker } from '@domains-all/free-domains';
+import { createPriceSource, type PriceSource } from '@domains-all/pricing';
 import { createJev } from '@domains-all/jev';
 import { log } from '@domains-all/log';
 import {
@@ -16,7 +26,11 @@ import {
   type Limiter,
 } from './limits';
 import {
+  type FeedbackStore,
+  MemoryFeedbackStore,
   MemorySearchStore,
+  SupabaseAvailabilityCache,
+  SupabaseFeedbackStore,
   SupabaseSearchStore,
   SupabaseUsageStore,
   SupabaseWordCache,
@@ -40,6 +54,11 @@ export interface Services {
   limiter: Limiter;
   idempotency: Idempotency;
   wordCache: WordCache;
+  /** Availability checks (spec 005): real DNS/RDAP unless PUBLIC_DATA_MODE=fixture. */
+  checker: Checker;
+  freeChecker: FreeChecker;
+  prices: PriceSource;
+  feedback: FeedbackStore;
   limitsEnforced: boolean;
   verifyHuman(token: string, ip: string | undefined): Promise<HumanCheck>;
   /** Throws NotConfiguredError in live mode when a secret is missing. */
@@ -57,8 +76,26 @@ export function buildServices(env: ServerEnv): Services {
       ? upstashRedis(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN)
       : null;
 
+  // Free, keyless public data is real even in mock mode (tasks/M4-verify.md decision 1); tests use fixtures.
+  const publicLive = env.PUBLIC_DATA_MODE === 'live';
+  const fetchFn: typeof fetch = publicLive ? (input, init) => fetch(input, init) : fixtureFetch;
+  const site = siteIdentity(env);
+  // Honest user agent with a contact address for registry operators (spec 005 tech §5.2, §9).
+  const userAgent = `${site.name.replace(/[^\w.-]/g, '')}/${PIPELINE_VERSION} (+${site.origin})`;
+
   return {
     env,
+    checker: createChecker({
+      directory: createDirectorySource({ live: publicLive, fetchFn }),
+      userAgent,
+      cache: sb ? new SupabaseAvailabilityCache(sb) : new MemoryAvailabilityCache(),
+      fetchFn,
+      // Fixtures never touch a registry, so they need no request spacing.
+      ...(publicLive ? {} : { limiter: new HostLimiter({ rps: 10_000, burst: 10_000, concurrency: 100 }) }),
+    }),
+    freeChecker: createFreeChecker({ live: publicLive, fetchFn }),
+    prices: createPriceSource({ live: publicLive, fetchFn }),
+    feedback: sb ? new SupabaseFeedbackStore(sb) : new MemoryFeedbackStore(),
     jev: createJev({ env, usageStore: sb ? new SupabaseUsageStore(sb) : undefined, mockHint: rulesMockHint }),
     store: sb ? new SupabaseSearchStore(sb) : new MemorySearchStore(),
     limiter: redis

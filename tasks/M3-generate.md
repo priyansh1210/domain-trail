@@ -61,7 +61,7 @@ Done 2026-10-04 except G1. Measured with the offline mock and with Jev down: NDC
 ## G. Owner steps
 | # | Task | Status |
 |---|---|---|
-| G1 | AI Gateway key — saved 2026-10-04 as a GitHub secret in the protected `production` environment (never on a PC or in chat). The real-Jev score comes from the `weekly-jev-eval` workflow (Actions → Run workflow → approve) | ⏸ |
+| G1 | Real-Jev score. Key saved as a GitHub secret; Vercel needs a card (added, auto top-up off) and then refused Jev on the free tier (2026-10-04, 403 "Free tier users do not have access to this model"). **Owner decision 2026-10-04: stay free; the site runs on the deterministic fallback; decide about a small Jev credit before launch.** | ⏸ |
 
 ## Not in M3
 Availability, prices, sections, slider, currency, "find more" button (M4); Google/GitHub sign-in, chip editing,

@@ -107,7 +107,13 @@ paths:
           description: Check result
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/CheckResult' }
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/CheckResult' }
+                  - type: object
+                    properties:
+                      price: { $ref: '#/components/schemas/Price', description: Present when the name can be registered and is priced }
+        '400': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/RateLimited' }
   /feedback:
     post:
@@ -433,6 +439,7 @@ components:
         priceMaxCents: { type: [integer, 'null'] }
         basis: { type: string, enum: [upfront, renewal] }
         exclude: { type: array, items: { type: string }, maxItems: 500 }
+        preferences: { $ref: '#/components/schemas/Preferences' }
         turnstileToken: { type: string }
     RefineRequest:
       type: object
@@ -465,9 +472,10 @@ components:
             end: { type: string, format: date }
     Price:
       type: object
-      required: [upfrontUsdCents, renewUsdCents, minYears, source, buyUrl]
+      required: [upfrontUsdCents, firstYearUsdCents, renewUsdCents, minYears, source, buyUrl]
       properties:
-        upfrontUsdCents: { type: integer }
+        upfrontUsdCents: { type: integer, description: First year plus the rest of a multi-year minimum term }
+        firstYearUsdCents: { type: integer }
         renewUsdCents: { type: integer }
         minYears: { type: integer }
         source: { type: string }
@@ -479,6 +487,8 @@ components:
       type: object
       properties:
         providerId: { type: string }
+        providerName: { type: string }
+        kind: { type: string, enum: [subdomain_service, community_registry, platform_address] }
         conditions:
           type: object
           properties:
@@ -497,18 +507,25 @@ components:
         status: { type: string, enum: [available, likely_available, available_premium, dropping_soon, unknown, appears_free, not_verifiable] }
         checkedAt: { type: string, format: date-time }
         price: { $ref: '#/components/schemas/Price' }
-        restriction: { type: string }
+        restriction:
+          type: object
+          properties:
+            kind: { type: string, enum: [local_presence, eligibility, blocked_for_public] }
+            note: { type: string }
+        requiresHttps: { type: boolean }
         free: { $ref: '#/components/schemas/FreeInfo' }
         score: { type: number }
         reasons:
           type: array
           maxItems: 3
+          description: Reason ids with values; the page words them (messages file, FR-UX-019)
           items:
             type: object
             properties:
-              id: { type: string }
-              text: { type: string }
+              id: { type: string, enum: [keyword, excellent_fit, short, tld_fit, tld_trust, local, brandable, hack, value] }
+              vars: { type: object }
         strategy: { type: string }
+        source: { type: string, enum: [jev, deterministic] }
     SiteProfile:
       type: object
       description: See spec 003 tech §3 (SiteProfile)
@@ -523,8 +540,25 @@ components:
         status: { type: string, enum: [running, done, refused, needs_detail, error] }
         profile: { $ref: '#/components/schemas/SiteProfile' }
         results: { type: array, items: { $ref: '#/components/schemas/Result' } }
-        ideas: { type: array, items: { $ref: '#/components/schemas/Idea' }, description: TEMPORARY (M3 preview) }
+        sections: { $ref: '#/components/schemas/SectionOrder' }
+        pricing: { $ref: '#/components/schemas/Pricing' }
         degraded: { type: boolean }
+    SectionOrder:
+      type: object
+      description: Final display order per section after the variety rules (spec 008 §5.5)
+      additionalProperties: { type: array, items: { type: string } }
+    Pricing:
+      type: object
+      properties:
+        fx:
+          type: object
+          properties:
+            base: { const: USD }
+            asOf: { type: string, format: date }
+            rates: { type: object, additionalProperties: { type: number }, description: Units per 1 USD }
+        pricesAt: { type: string, format: date-time }
+        source: { type: string }
+        stale: { type: boolean }
     StreamEvent:
       description: One server-sent event. The `event:` field names the type; `data:` holds JSON.
       oneOf:
@@ -534,8 +568,8 @@ components:
         - { $ref: '#/components/schemas/StreamEventNeedsDetail' }
         - { $ref: '#/components/schemas/StreamEventRefused' }
         - { $ref: '#/components/schemas/StreamEventDegraded' }
+        - { $ref: '#/components/schemas/StreamEventPricing' }
         - { $ref: '#/components/schemas/StreamEventBatch' }
-        - { $ref: '#/components/schemas/StreamEventIdeas' }
         - { $ref: '#/components/schemas/StreamEventUpdate' }
         - { $ref: '#/components/schemas/StreamEventNotice' }
         - { $ref: '#/components/schemas/StreamEventDone' }
@@ -570,31 +604,17 @@ components:
       properties:
         event: { const: degraded }
         data: { type: object, properties: { reason: { type: string, enum: [jev_unavailable, budget] } } }
+    StreamEventPricing:
+      description: Sent before the first batch so prices can be shown in any currency (FR-PRC-010, FR-PRC-011)
+      type: object
+      properties:
+        event: { const: pricing }
+        data: { $ref: '#/components/schemas/Pricing' }
     StreamEventBatch:
       type: object
       properties:
         event: { const: batch }
         data: { type: object, properties: { results: { type: array, items: { $ref: '#/components/schemas/Result' } } } }
-    StreamEventIdeas:
-      description: TEMPORARY (milestone M3 preview, replaced by `batch` results in M4). Ranked name ideas with suggested extensions; not checked for availability and never labelled "available" (constitution P3).
-      type: object
-      properties:
-        event: { const: ideas }
-        data:
-          type: object
-          properties:
-            ideas: { type: array, items: { $ref: '#/components/schemas/Idea' } }
-            lowSupply: { type: boolean }
-    Idea:
-      type: object
-      required: [label, tlds, reasons]
-      properties:
-        label: { type: string }
-        strategy: { type: string }
-        score: { type: number }
-        source: { type: string, enum: [jev, deterministic] }
-        tlds: { type: array, items: { type: object, properties: { tld: { type: string }, fit: { type: number } } } }
-        reasons: { type: array, maxItems: 3, items: { type: object, properties: { id: { type: string }, vars: { type: object } } } }
     StreamEventUpdate:
       type: object
       properties:
@@ -610,7 +630,7 @@ components:
       type: object
       properties:
         event: { const: notice }
-        data: { type: object, properties: { code: { type: string, enum: [avl_paused, stale_prices, low_supply, not_saved], description: 'not_saved = storage unavailable; results work now but cannot be shared or reloaded (spec 000 tech §8)' }, message: { type: string } } }
+        data: { type: object, properties: { code: { type: string, enum: [avl_paused, stale_prices, low_supply, not_saved, partial], description: 'not_saved = storage unavailable; results work now but cannot be shared or reloaded (spec 000 tech §8)' }, message: { type: string } } }
     StreamEventDone:
       type: object
       properties:
@@ -618,7 +638,8 @@ components:
         data:
           type: object
           properties:
-            counts: { type: object, additionalProperties: { type: integer } }
+            counts: { type: object, additionalProperties: { type: integer }, description: Shown results per section }
+            sections: { $ref: '#/components/schemas/SectionOrder' }
             durationMs: { type: integer }
             dataAgeHours: { type: number }
     StreamEventError:

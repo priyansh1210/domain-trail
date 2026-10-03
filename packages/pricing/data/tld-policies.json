@@ -1,0 +1,1509 @@
+{
+ "reviewedAt": "2026-10-04",
+ "source": "docs/research.md R-13 (registry and registrar policy pages)",
+ "policies": {
+  "academy": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "accountant": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "adult": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "ae": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires a UAE presence or trademark"
+  },
+  "africa": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "agency": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "ai": {
+   "restriction": "none",
+   "minYears": 2,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "app": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": true,
+   "premiumNames": true,
+   "note": "Websites on this extension must use HTTPS (most hosts do this automatically)"
+  },
+  "architect": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "art": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "asia": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "at": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "attorney": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "au": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires an Australian connection (ABN, ACN or Australian ID)"
+  },
+  "auto": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "band": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "bar": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "be": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "beauty": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "beer": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "bike": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "bio": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "blog": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "books": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "boutique": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "build": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "ca": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires Canadian presence (citizen, resident, company or Canadian trademark)"
+  },
+  "cafe": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "capital": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "care": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "careers": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "cars": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "ch": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "charity": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "church": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "cl": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "cleaning": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "clinic": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "cloud": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "club": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "cn": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires Chinese real-name verification"
+  },
+  "co": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "co.id": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires an Indonesian company"
+  },
+  "co.il": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "co.in": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "co.jp": {
+   "restriction": "eligibility",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Only for companies registered in Japan"
+  },
+  "co.ke": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "co.kr": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires an address in Korea"
+  },
+  "co.nz": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "co.th": {
+   "restriction": "eligibility",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires Thai company documents"
+  },
+  "co.uk": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "co.za": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "coach": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "codes": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "coffee": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "college": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "com": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "com.ar": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires an Argentine tax ID"
+  },
+  "com.au": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires an Australian business (ABN or ACN)"
+  },
+  "com.bd": {
+   "restriction": "eligibility",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires Bangladeshi documents"
+  },
+  "com.br": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires a Brazilian CPF or CNPJ number"
+  },
+  "com.co": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "com.eg": {
+   "restriction": "eligibility",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Rules for this extension vary; check the registrar's requirements"
+  },
+  "com.mx": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "com.my": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires a Malaysian company"
+  },
+  "com.ng": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "com.np": {
+   "restriction": "eligibility",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires Nepali documents"
+  },
+  "com.ph": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "com.sg": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires a Singapore administrative contact"
+  },
+  "com.tr": {
+   "restriction": "eligibility",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires Turkish documents or a trademark"
+  },
+  "community": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "company": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "construction": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "consulting": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "courses": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "credit": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "cz": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "dating": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "de": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Needs a contact address in Germany for official documents (many registrars provide one)"
+  },
+  "delivery": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "dental": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "design": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "dev": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": true,
+   "premiumNames": true,
+   "note": "Websites on this extension must use HTTPS (most hosts do this automatically)"
+  },
+  "digital": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "directory": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "dk": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "doctor": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "dog": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "earth": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "eco": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "education": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "energy": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "es": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "estate": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "eu": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires EU/EEA citizenship, residence or establishment"
+  },
+  "events": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "exchange": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "family": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "farm": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "fashion": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "fi": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "film": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "finance": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "fit": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "fitness": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "fm": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "foundation": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "fr": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires residence or establishment in the EU/EEA"
+  },
+  "fun": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "fund": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "furniture": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "gallery": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "game": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "games": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "garden": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "gg": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "gifts": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "global": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "gr": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "green": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "guide": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "health": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "hk": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "holiday": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "homes": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "host": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "hotel": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "house": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "hu": {
+   "restriction": "eligibility",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Rules for this extension vary; check the registrar's requirements"
+  },
+  "id": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires an Indonesian ID or company"
+  },
+  "ie": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires a real connection to Ireland"
+  },
+  "in": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "industries": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "info": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "insure": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "io": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "it": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires residence or establishment in the EU/EEA"
+  },
+  "jewelry": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "jobs": {
+   "restriction": "eligibility",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true,
+   "note": "Only for human-resources and job pages of employers"
+  },
+  "jp": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires a postal address in Japan (registrars may offer a trustee)"
+  },
+  "ke": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "kitchen": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "kr": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires an address in Korea"
+  },
+  "lat": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "lawyer": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "legal": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "live": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "lk": {
+   "restriction": "eligibility",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Rules for this extension vary; check the registrar's requirements"
+  },
+  "loans": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "love": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "luxury": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "ma": {
+   "restriction": "eligibility",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Rules for this extension vary; check the registrar's requirements"
+  },
+  "market": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "marketing": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "me": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "media": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "menu": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "money": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "movie": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "music": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "mx": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "my": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires a Malaysian presence"
+  },
+  "name": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "net": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "news": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "ng": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "ngo": {
+   "restriction": "eligibility",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true,
+   "note": "Only for verified non-governmental organisations"
+  },
+  "nl": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "no": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires a Norwegian organisation or resident"
+  },
+  "nz": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "online": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "org": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "page": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": true,
+   "premiumNames": true,
+   "note": "Websites on this extension must use HTTPS (most hosts do this automatically)"
+  },
+  "pe": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "pet": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "pets": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "ph": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "photo": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "photography": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "pizza": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "pk": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "pl": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "porn": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "press": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "properties": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "pt": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "realty": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "recipes": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "rentals": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "repair": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "restaurant": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "reviews": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "ro": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "run": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "sa": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires a Saudi presence or trademark"
+  },
+  "school": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "se": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "security": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "services": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "sex": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "sg": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires a Singapore administrative contact"
+  },
+  "sh": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "shoes": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "shop": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "show": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "site": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "so": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "social": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "software": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "solar": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "solutions": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "space": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "sport": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "store": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "studio": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "style": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "tax": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "tech": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "tips": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "tools": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "tours": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "toys": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "trade": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "training": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "travel": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "tv": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "tw": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "ua": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "uk": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false
+  },
+  "us": {
+   "restriction": "local_presence",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Requires a US connection (citizen, resident or US organisation)"
+  },
+  "vet": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "video": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "vip": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "vn": {
+   "restriction": "eligibility",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": false,
+   "note": "Rules for this extension vary; check the registrar's requirements"
+  },
+  "vote": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "voyage": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "wedding": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "wiki": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "wine": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "work": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "world": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "xxx": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "xyz": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  },
+  "yoga": {
+   "restriction": "none",
+   "minYears": 1,
+   "requiresHttps": false,
+   "premiumNames": true
+  }
+ }
+}

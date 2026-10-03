@@ -58,7 +58,16 @@ export function finalScore(p: Pair, P?: number): number {
 }
 
 export interface Reason {
-  id: 'keyword' | 'excellent_fit' | 'short' | 'tld_fit' | 'tld_trust' | 'local' | 'brandable' | 'hack';
+  id:
+    | 'keyword'
+    | 'excellent_fit'
+    | 'short'
+    | 'tld_fit'
+    | 'tld_trust'
+    | 'local'
+    | 'brandable'
+    | 'hack'
+    | 'value';
   vars: Record<string, string | number>;
 }
 

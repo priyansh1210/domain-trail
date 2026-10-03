@@ -202,18 +202,27 @@ importers:
 
   apps/web:
     dependencies:
+      '@domains-all/availability':
+        specifier: workspace:*
+        version: link:../../packages/availability
       '@domains-all/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@domains-all/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@domains-all/free-domains':
+        specifier: workspace:*
+        version: link:../../packages/free-domains
       '@domains-all/jev':
         specifier: workspace:*
         version: link:../../packages/jev
       '@domains-all/log':
         specifier: workspace:*
         version: link:../../packages/log
+      '@domains-all/pricing':
+        specifier: workspace:*
+        version: link:../../packages/pricing
       '@microsoft/fetch-event-source':
         specifier: ^2.0.1
         version: 2.0.1
@@ -235,6 +244,9 @@ importers:
       react-dom:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
       zustand:
         specifier: ^5.0.15
         version: 5.0.15(@types/react@19.3.0)(react@19.3.0)
@@ -261,6 +273,16 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@types/node@22.20.5)(vite@8.3.2(@types/node@22.20.5)(jiti@2.7.0)(tsx@4.23.15))
 
+  packages/availability:
+    dependencies:
+      '@domains-all/config':
+        specifier: workspace:*
+        version: link:../config
+    devDependencies:
+      vitest:
+        specifier: ^5.0.3
+        version: 5.0.3(@types/node@22.20.5)(vite@8.3.2(@types/node@22.20.5)(jiti@2.7.0)(tsx@4.23.15))
+
   packages/config:
     dependencies:
       zod:
@@ -273,15 +295,24 @@ importers:
 
   packages/core:
     dependencies:
+      '@domains-all/availability':
+        specifier: workspace:*
+        version: link:../availability
       '@domains-all/config':
         specifier: workspace:*
         version: link:../config
+      '@domains-all/free-domains':
+        specifier: workspace:*
+        version: link:../free-domains
       '@domains-all/jev':
         specifier: workspace:*
         version: link:../jev
       '@domains-all/log':
         specifier: workspace:*
         version: link:../log
+      '@domains-all/pricing':
+        specifier: workspace:*
+        version: link:../pricing
       transliteration:
         specifier: ^2.6.1
         version: 2.6.1
@@ -311,6 +342,19 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@types/node@22.20.5)(vite@8.3.2(@types/node@22.20.5)(jiti@2.7.0)(tsx@4.23.15))
 
+  packages/free-domains:
+    dependencies:
+      '@domains-all/availability':
+        specifier: workspace:*
+        version: link:../availability
+      '@domains-all/config':
+        specifier: workspace:*
+        version: link:../config
+    devDependencies:
+      vitest:
+        specifier: ^5.0.3
+        version: 5.0.3(@types/node@22.20.5)(vite@8.3.2(@types/node@22.20.5)(jiti@2.7.0)(tsx@4.23.15))
+
   packages/jev:
     dependencies:
       '@domains-all/config':
@@ -335,6 +379,16 @@ importers:
       pino:
         specifier: ^10.4.0
         version: 10.4.0
+    devDependencies:
+      vitest:
+        specifier: ^5.0.3
+        version: 5.0.3(@types/node@22.20.5)(vite@8.3.2(@types/node@22.20.5)(jiti@2.7.0)(tsx@4.23.15))
+
+  packages/pricing:
+    dependencies:
+      '@domains-all/config':
+        specifier: workspace:*
+        version: link:../config
     devDependencies:
       vitest:
         specifier: ^5.0.3

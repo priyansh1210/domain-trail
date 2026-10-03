@@ -47,11 +47,24 @@ export const availability = {
     dropping_soon: 24 * HOUR,
     unknown: 1 * HOUR,
   },
-  rdapRequestsPerSecondPerServer: 5,
+  rdapPerHostRps: 5, // NFR-AVL-006, halved for 10 min after a 429
+  rdapPerHostConcurrency: 4,
+  rdapMaxPerSearch: 120,
+  rdapTimeoutMs: 3000,
+  rdapMaxBytes: 256 * 1024,
+  rdapRetryAfterMaxSeconds: 5,
   dohMaxPerSearch: 400,
   dohConcurrency: 25,
+  dohTimeoutMs: 1200,
   rdapDailyCap: 60_000,
   dohDailyCap: 150_000,
+  /** Re-verify a cached "available" older than this when it will be shown in the top 20 (tech §5.3). */
+  reverifyAfterSeconds: 30 * 60,
+  /** RDAP directory and per-TLD wildcard detection are refreshed this often per server instance. */
+  directoryRefreshHours: 12,
+  /** How many name + extension pairs a search checks (tech §10: ~250 FQDNs). */
+  maxFqdnsPerSearch: 250,
+  searchDeadlineMs: 12_000,
 } as const;
 
 /** Spec 006 FR-PRC-003, FR-PRC-004, FR-PRC-010, FR-PRC-015, NFR-PRC-002. Money in USD cents. */
@@ -60,6 +73,8 @@ export const pricing = {
   sliderMaxUsd: 10_000,
   renewalWarningRatio: 2,
   priceStaleHours: 30,
+  /** Server instances re-fetch the public price list and FX rates this often (M4 decision 3). */
+  refreshHours: 12,
   displayCurrencies: 'all' as 'all' | readonly string[],
 } as const;
 

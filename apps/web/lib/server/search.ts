@@ -8,7 +8,6 @@ import {
   runS1,
   SearchRequestSchema,
   searchRef,
-  type Idea,
   type SiteProfile,
 } from '@domains-all/core';
 import { PIPELINE_VERSION, rateLimits, retention } from '@domains-all/config';
@@ -16,6 +15,8 @@ import { log } from '@domains-all/log';
 import type { Bucket } from './limits';
 import { NotConfiguredError, type Services } from './services';
 import { eventStream, readLimited, type EventSink } from './sse';
+import type { StoredResults } from './store';
+import { countBySection, sendPricing, streamVerify } from './verify-stream';
 import { clientIp, visitorHash } from './visitor';
 
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
@@ -27,11 +28,20 @@ function fieldErrors(issues: Array<{ path: PropertyKey[]; message: string }>): R
   return out;
 }
 
-function replay(sink: EventSink, s: { id: string; ref: string; features: SiteProfile; ideas: Idea[] }) {
+function replay(
+  sink: EventSink,
+  svc: Services,
+  s: { id: string; ref: string; features: SiteProfile; stored: StoredResults },
+) {
   sink.send('search_created', { searchId: s.id, ref: s.ref, cached: true });
   sink.send('features', s.features);
-  sink.send('ideas', { ideas: s.ideas, lowSupply: false });
-  sink.send('done', { counts: { ideas: s.ideas.length }, durationMs: 0 });
+  sendPricing(sink, svc);
+  if (s.stored.results.length) sink.send('batch', { results: s.stored.results });
+  sink.send('done', {
+    counts: countBySection(s.stored.sections),
+    sections: s.stored.sections,
+    durationMs: 0,
+  });
 }
 
 export async function handleSearch(req: Request, svc: Services): Promise<Response> {
@@ -91,10 +101,10 @@ export async function handleSearch(req: Request, svc: Services): Promise<Respons
     const rec = await svc.store.getSearch(cachedId).catch(() => null);
     if (rec?.status === 'done' && rec.features) {
       const features = rec.features;
-      const ideas = await svc.store.getIdeas(rec.id).catch(() => []);
+      const stored = await svc.store.getResults(rec.id).catch(() => ({ results: [], sections: {} }));
       log.info({ event: 'search', outcome: 'cache_hit', searchId: rec.id });
       return eventStream(async (sink) =>
-        replay(sink, { id: rec.id, ref: searchRef(rec.id, secrets.searchLink), features, ideas }),
+        replay(sink, svc, { id: rec.id, ref: searchRef(rec.id, secrets.searchLink), features, stored }),
       );
     }
   }
@@ -144,14 +154,16 @@ export async function handleSearch(req: Request, svc: Services): Promise<Respons
     const usage = { ...outcome.usage };
 
     const status = outcome.kind === 'features' ? 'done' : outcome.kind;
-    let ideas: Idea[] = [];
+    let stored: StoredResults = { results: [], sections: {} };
     let stageMs: Record<string, number> = { S1: s1Ms };
     if (outcome.kind === 'refused') sink.send('refused', { reason: 'safety' });
     else if (outcome.kind === 'needs_detail') sink.send('needs_detail', { hints: outcome.hints });
     else {
       sink.send('features', outcome.profile);
-      // S2–S6: name ideas ranked by Jev. Availability and prices (S7–S8) arrive in milestone M4.
+      // S2–S6: names ranked by Jev (or the deterministic fallback); S7–S9: availability, prices, sections.
       sink.send('progress', { stage: 'names', pct: 30 });
+      let counts = countBySection({});
+      let dataAgeHours: number | undefined;
       try {
         const names = await runNames({
           description,
@@ -164,21 +176,39 @@ export async function handleSearch(req: Request, svc: Services): Promise<Respons
           live: !svc.env.MOCK_EXTERNALS,
           wordCache: svc.wordCache,
         });
-        ideas = names.ideas;
         usage.tokens += names.usage.tokens;
         usage.requests += names.usage.requests;
         if (names.degraded && !degraded) {
           degraded = names.degraded;
           sink.send('degraded', { reason: degraded });
         }
-        sink.send('ideas', { ideas, lowSupply: names.lowSupply });
-        stageMs = { S1: s1Ms, names: Date.now() - started - s1Ms };
+        const namesMs = Date.now() - started - s1Ms;
+        const verified = await streamVerify(sink, svc, {
+          names,
+          profile: outcome.profile,
+          includeFree: preferences.includeFree,
+          allowHyphens: preferences.allowHyphens,
+        });
+        stored = verified.stored;
+        counts = verified.counts;
+        dataAgeHours = verified.dataAgeHours;
+        if (names.lowSupply || stored.results.length < 10)
+          sink.send('notice', {
+            code: 'low_supply',
+            message: 'We found fewer good names than usual. Try adding detail or relaxing the options.',
+          });
+        stageMs = { S1: s1Ms, names: namesMs, verify: Date.now() - started - s1Ms - namesMs };
       } catch (e) {
         // The chips are already shown; a failure here should not turn the whole search into an error.
-        log.error({ event: 'search.names_failed', searchId: id, error: (e as Error).message });
-        sink.send('ideas', { ideas: [], lowSupply: true });
+        log.error({ event: 'search.results_failed', searchId: id, error: (e as Error).message });
+        sink.send('notice', { code: 'partial', message: 'Some results could not be loaded.' });
       }
-      sink.send('done', { counts: { ideas: ideas.length }, durationMs: Date.now() - started });
+      sink.send('done', {
+        counts,
+        sections: stored.sections,
+        durationMs: Date.now() - started,
+        ...(dataAgeHours === undefined ? {} : { dataAgeHours }),
+      });
     }
 
     const durationMs = Date.now() - started;
@@ -193,7 +223,7 @@ export async function handleSearch(req: Request, svc: Services): Promise<Respons
       durationMs,
       degraded: Boolean(degraded),
       tokens: usage.tokens,
-      ideas: ideas.length,
+      results: stored.results.length,
     });
     if (!persisted) return;
     try {
@@ -205,7 +235,7 @@ export async function handleSearch(req: Request, svc: Services): Promise<Respons
         durationMs,
         stageMs,
       });
-      if (ideas.length) await svc.store.saveIdeas(id, ideas);
+      if (stored.results.length) await svc.store.saveResults(id, stored);
       if (status === 'done') {
         await svc.store.cachePut(
           key,
@@ -231,6 +261,7 @@ export async function handleSnapshot(ref: string, svc: Services): Promise<Respon
   if (!id) return json(404, { error: 'not_found', message: 'These results do not exist.' });
   const rec = await svc.store.getSearch(id).catch(() => null);
   if (!rec) return json(404, { error: 'expired', message: 'These results have expired.' });
+  const book = svc.prices.get();
   return json(200, {
     searchId: rec.id,
     ref,
@@ -238,8 +269,8 @@ export async function handleSnapshot(ref: string, svc: Services): Promise<Respon
     createdAt: rec.createdAt,
     expiresAt: rec.expiresAt,
     profile: rec.features,
-    results: [],
-    ideas: await svc.store.getIdeas(rec.id).catch(() => []),
+    ...(await svc.store.getResults(rec.id).catch(() => ({ results: [], sections: {} }))),
+    pricing: { fx: book.fx, pricesAt: book.pricesAt, source: book.provider.name },
     degraded: rec.degraded,
   });
 }
