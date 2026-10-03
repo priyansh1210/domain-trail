@@ -10,7 +10,7 @@
 
 Status: ☐ open · ◐ in progress · ☑ done · ⏸ waiting for the owner
 
-Done 2026-10-04 except G1. Measured with the offline mock and with Jev down: NDCG@10 0.989 (mock) and 0.965 (degraded, target 0.4) — see `packages/jev/eval/reports/`. The 0.6 target with the real Jev is measured once the AI Gateway key exists (G1). Caveat: the owner's bad names are easy to spot; harder "plausible but weak" bad names will make the score more honest.
+Done 2026-10-04 except G1. Measured with the offline mock and with Jev down: NDCG@10 0.989 (mock) and 0.965 (degraded, target 0.4) — see `packages/jev/eval/reports/`. The 0.6 target with the real Jev is measured by the `weekly-jev-eval` workflow now that the key is saved (G1). Caveat: the owner's bad names are easy to spot; harder "plausible but weak" bad names will make the score more honest.
 
 ## A. Data and research
 | # | Task | Requirement | Status |
@@ -61,7 +61,7 @@ Done 2026-10-04 except G1. Measured with the offline mock and with Jev down: NDC
 ## G. Owner steps
 | # | Task | Status |
 |---|---|---|
-| G1 | AI Gateway key (M2 task E2) — needed to measure the ≥ 0.6 target with the real Jev | ⏸ |
+| G1 | AI Gateway key — saved 2026-10-04 as a GitHub secret in the protected `production` environment (never on a PC or in chat). The real-Jev score comes from the `weekly-jev-eval` workflow (Actions → Run workflow → approve) | ⏸ |
 
 ## Not in M3
 Availability, prices, sections, slider, currency, "find more" button (M4); Google/GitHub sign-in, chip editing,

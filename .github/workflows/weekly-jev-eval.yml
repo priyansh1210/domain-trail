@@ -1,0 +1,51 @@
+# Spec 002 tech §5.8 / spec 016 §5.1 (FR-JEV-015, NFR-RANK-001): ranking evaluation with the real Jev on the golden
+# set. The API key lives only in the protected "production" environment, so each run waits for the owner's approval.
+# Scores appear as annotations and in the run summary; the report file is saved on the `eval-reports` branch.
+# Started by hand for now (Actions → weekly-jev-eval → Run workflow); the weekly schedule and the S1 accuracy part
+# arrive with `pnpm eval:jev` (milestone M5).
+name: weekly-jev-eval
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jev-eval
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    permissions:
+      contents: write # only to save the report on the eval-reports branch
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Rank the golden set with the real Jev
+        env:
+          MOCK_EXTERNALS: '0'
+          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+        run: pnpm eval:pipeline --require-jev
+      - name: Save the report on the eval-reports branch
+        if: always()
+        run: |
+          report="packages/jev/eval/reports/$(date -u +%F).md"
+          [ -f "$report" ] || exit 0
+          cp "$report" "$RUNNER_TEMP/report.md"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch --depth 1 origin eval-reports; then git switch -c eval-reports FETCH_HEAD; else git switch --orphan eval-reports; fi
+          mkdir -p reports
+          cp "$RUNNER_TEMP/report.md" "reports/$(date -u +%F).md"
+          git add reports
+          git commit -m "Ranking evaluation $(date -u +%F)" || exit 0
+          git push origin eval-reports
