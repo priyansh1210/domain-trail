@@ -2,6 +2,7 @@
 // finishes. Anything not answered in time is "unknown" (honest uncertainty, FR-AVL-008); daily caps switch to
 // cache-only mode (FR-AVL-013).
 import { availability } from '@domains-all/config/defaults';
+import { within } from '@domains-all/config/net';
 import { type AvailabilityCache, makeResult, MemoryAvailabilityCache } from './cache';
 import type { RdapDirectory } from './directory';
 import { dohNs, dohQuery, resolves, type NsVerdict } from './doh';
@@ -116,7 +117,7 @@ export function createChecker(opts: CheckerOptions) {
 
     const fresh = ctx.force
       ? new Map<string, CheckResult>()
-      : await cache.getMany(list, now()).catch(() => new Map());
+      : await within(cache.getMany(list, now()), 1500, new Map<string, CheckResult>()); // slow cache = miss
     const reverify: string[] = [];
     for (const [fqdn, r] of fresh) {
       stats.cached++;
@@ -242,7 +243,7 @@ export function createChecker(opts: CheckerOptions) {
     await Promise.all([counter.add('doh', budget.doh), counter.add('rdap', budget.rdap)]).catch(
       () => undefined,
     );
-    await cache.putMany(fresher).catch(() => undefined);
+    await within(cache.putMany(fresher), 2000, undefined);
     return finish();
 
     function finish() {

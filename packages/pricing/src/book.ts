@@ -2,6 +2,7 @@
 // tasks/M4-verify.md decision 3). Live mode refreshes Porkbun and Frankfurter in the background every 12 hours;
 // the committed snapshots answer at once and remain the fallback.
 import { pricing } from '@domains-all/config/defaults';
+import { timedFetch } from '@domains-all/config/net';
 import fxSnapshot from '../data/fx-rates.json';
 import priceSnapshot from '../data/porkbun-prices.json';
 import policyData from '../data/tld-policies.json';
@@ -78,9 +79,9 @@ export function createPriceSource(opts: { live: boolean; fetchFn?: typeof fetch;
 
   async function load(): Promise<void> {
     const get = async (url: string) => {
-      const res = await (opts.fetchFn ?? fetch)(url, { signal: AbortSignal.timeout(10_000) });
-      if (!res.ok) throw new Error(`${url} → ${res.status}`);
-      return res.json();
+      const res = await timedFetch(url, { timeoutMs: 10_000, maxBytes: 2_000_000, fetchFn: opts.fetchFn });
+      if (!res?.ok || !res.text) throw new Error(`${url} → ${res?.status ?? 'no answer'}`);
+      return JSON.parse(res.text) as unknown;
     };
     const [prices, fx] = await Promise.allSettled([
       get(PORKBUN_PRICING_URL).then(parsePorkbun),

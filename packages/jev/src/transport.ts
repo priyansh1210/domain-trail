@@ -46,6 +46,15 @@ export interface HttpTransportOptions {
 }
 
 const BACKOFF_MS = [300, 900];
+
+/** Rejects with a TimeoutError after `ms`, even if the runtime ignores the abort signal (seen in production). */
+function bounded<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error('timed out'), { name: 'TimeoutError' })), ms);
+  });
+  return Promise.race([work, late]).finally(() => clearTimeout(timer));
+}
 const RETRYABLE = new Set([429, 529, 500, 502, 503, 504]);
 
 export function createHttpTransport(opts: HttpTransportOptions): Transport {
@@ -65,14 +74,18 @@ export function createHttpTransport(opts: HttpTransportOptions): Transport {
         if (remaining < 50)
           return { ok: false, error: 'timeout', status: lastStatus, requestId: lastRequestId };
         const started = now();
+        const limit = Math.min(requestTimeoutMs, remaining);
         let res: Response;
         try {
-          res = await fetchFn(ROUTES[opts.route], {
-            method: 'POST',
-            headers: { 'content-type': 'application/json', authorization: `Bearer ${opts.apiKey}` },
-            body: JSON.stringify({ ...body, model: wireModel(body.model, opts.route) }),
-            signal: AbortSignal.timeout(Math.min(requestTimeoutMs, remaining)),
-          });
+          res = await bounded(
+            fetchFn(ROUTES[opts.route], {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', authorization: `Bearer ${opts.apiKey}` },
+              body: JSON.stringify({ ...body, model: wireModel(body.model, opts.route) }),
+              signal: AbortSignal.timeout(limit),
+            }),
+            limit + 100,
+          );
         } catch (e) {
           const timedOut = (e as Error).name === 'TimeoutError' || (e as Error).name === 'AbortError';
           opts.log?.warn({
@@ -108,7 +121,7 @@ export function createHttpTransport(opts: HttpTransportOptions): Transport {
         if (res.ok) {
           let json: SystemOneResponse;
           try {
-            json = (await res.json()) as SystemOneResponse;
+            json = (await bounded(res.json(), Math.max(200, ctx.deadline - now()))) as SystemOneResponse;
           } catch {
             opts.log?.warn({ ...logBase, error: 'bad_json' });
             return { ok: false, status: res.status, error: 'invalid', requestId };
@@ -119,7 +132,7 @@ export function createHttpTransport(opts: HttpTransportOptions): Transport {
           return { ok: true, response: json, requestId, latencyMs };
         }
 
-        const detail = await errorDetail(res);
+        const detail = await bounded(errorDetail(res), 1000).catch(() => undefined);
         if (res.status === 401 || res.status === 403) {
           opts.log?.error({ ...logBase, error: 'auth', detail });
           return { ok: false, status: res.status, error: 'auth', requestId };

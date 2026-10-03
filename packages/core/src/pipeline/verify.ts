@@ -3,9 +3,10 @@
 // Results stream in batches as checks finish (FR-AVL-006); the final order per section comes at the end.
 import type { Checker, CheckResult, CheckStatus } from '@domains-all/availability';
 import { availability, ranking } from '@domains-all/config/defaults';
+import { within } from '@domains-all/config/net';
 import { findFreeNames, type FreeChecker, type FreeResult, selectProviders } from '@domains-all/free-domains';
 import { type PriceBook, priceFor, TIER_BOUNDS, type Tier } from '@domains-all/pricing';
-import { finalScore, type Pair, reasonsFor } from '../ranking/score';
+import { fairOrder, finalScore, type Pair, reasonsFor } from '../ranking/score';
 import { type ResultItem, type Section, SECTIONS } from '../results';
 
 export { type ResultItem, type Section, SECTIONS };
@@ -90,7 +91,10 @@ function scoredItem(pair: Pair, check: CheckResult, ctx: VerifyContext): ResultI
   return item;
 }
 
-/** Variety (FR-RANK-008, 009): ≤ 3 per name per section; no style above 40 % of the first page. */
+/**
+ * Variety (FR-RANK-008, 009): ≤ 3 per name per section; no style above 40 % of the first page. Unconfirmed names
+ * (FR-AVL-008) only fill the first page when there are too few confirmed ones — a page of "Unconfirmed" helps nobody.
+ */
 export function orderSection(items: readonly ResultItem[]): string[] {
   const sorted = [...items].sort((a, b) => b.score - a.score || a.fqdn.localeCompare(b.fqdn));
   const perLabel = new Map<string, number>();
@@ -108,7 +112,10 @@ export function orderSection(items: readonly ResultItem[]): string[] {
   }
   // Too few styles to fill the first page under the rule: top up in score order.
   while (first.length < PAGE && later.length) first.push(later.shift()!);
-  return [...first, ...later];
+  const ordered = [...first, ...later];
+  const unknown = new Set(items.filter((i) => i.status === 'unknown').map((i) => i.fqdn));
+  let room = Math.max(0, PAGE - (ordered.length - ordered.filter((f) => unknown.has(f)).length));
+  return ordered.filter((f) => !unknown.has(f) || room-- > 0);
 }
 
 function freeItem(r: FreeResult, pairByLabel: ReadonlyMap<string, Pair>): ResultItem {
@@ -147,11 +154,8 @@ export function freeLabels(
 
 export async function runVerify(ctx: VerifyContext): Promise<VerifyOutcome> {
   const now = ctx.now ?? Date.now;
-  const ordered = [...ctx.pairs]
-    .map((p) => ({ p, s: finalScore(p) }))
-    .sort((a, b) => b.s - a.s || a.p.fqdn.localeCompare(b.p.fqdn))
-    .slice(0, availability.maxFqdnsPerSearch)
-    .map((x) => x.p);
+  // Which pairs to check: every extension's best names, in turn, so checks spread across registries.
+  const ordered = fairOrder(ctx.pairs, (p) => finalScore(p)).slice(0, availability.maxFqdnsPerSearch);
   const pairByFqdn = new Map(ordered.map((p) => [p.fqdn, p]));
   const pairByLabel = new Map<string, Pair>();
   for (const p of ordered) if (!pairByLabel.has(p.label)) pairByLabel.set(p.label, p);
@@ -202,7 +206,8 @@ export async function runVerify(ctx: VerifyContext): Promise<VerifyOutcome> {
     },
   );
   flush();
-  const free = await freeTask;
+  // Free names may not hold up the results: they get until a little after the availability deadline.
+  const free = await within(freeTask, Math.max(1000, ctx.deadline + 3000 - now()), [] as ResultItem[]);
   for (const item of free) results.set(item.fqdn, item);
   if (free.length) ctx.onBatch?.(free);
 

@@ -1,6 +1,7 @@
 // DNS-over-HTTPS pre-check (spec 005 tech §5.1, FR-AVL-002): a name with NS records is registered; anything else
 // goes on to the registry's RDAP answer. Cloudflare first, Google as the fallback.
 import { availability } from '@domains-all/config/defaults';
+import { timedFetch } from '@domains-all/config/net';
 
 export const DOH_PROVIDERS = [
   (name: string, type: string) =>
@@ -24,13 +25,15 @@ export interface DohOptions {
 
 /** One query against one provider; undefined on network error, timeout or a non-JSON answer. */
 async function queryOnce(url: string, opts: DohOptions): Promise<DohAnswer | undefined> {
+  const res = await timedFetch(url, {
+    headers: { accept: 'application/dns-json' },
+    timeoutMs: opts.timeoutMs ?? availability.dohTimeoutMs,
+    maxBytes: 64 * 1024,
+    fetchFn: opts.fetchFn,
+  });
+  if (!res?.ok || res.text === undefined) return undefined;
   try {
-    const res = await (opts.fetchFn ?? fetch)(url, {
-      headers: { accept: 'application/dns-json' },
-      signal: AbortSignal.timeout(opts.timeoutMs ?? availability.dohTimeoutMs),
-    });
-    if (!res.ok) return undefined;
-    const json = (await res.json()) as { Status?: unknown; Answer?: unknown; Authority?: unknown };
+    const json = JSON.parse(res.text) as { Status?: unknown; Answer?: unknown; Authority?: unknown };
     if (typeof json.Status !== 'number') return undefined;
     const records = (v: unknown) =>
       Array.isArray(v)

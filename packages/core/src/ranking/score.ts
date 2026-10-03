@@ -18,7 +18,13 @@ export const PENALTIES = { hyphen: 0.05, digit: 0.05 };
 export function pair(
   ranked: readonly Ranked[],
   tldFit: ReadonlyMap<string, number>,
-  opts: { preferredTlds: readonly string[]; bandTlds?: readonly string[]; perLabel?: number },
+  opts: {
+    preferredTlds: readonly string[];
+    bandTlds?: readonly string[];
+    perLabel?: number;
+    /** Always offered alongside the best fits: ".com" and the local extension (spec 008 §5.3 note, 2026-10-04). */
+    anchors?: readonly string[];
+  },
 ): Pair[] {
   const best = [...tldFit.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
@@ -28,6 +34,7 @@ export function pair(
   for (const r of ranked) {
     const tlds = new Set([
       ...best,
+      ...(opts.anchors ?? []),
       ...opts.preferredTlds,
       ...(r.hackTld ? [r.hackTld] : []),
       ...(opts.bandTlds ?? []),
@@ -38,9 +45,23 @@ export function pair(
       out.push({ label: r.label, tld, fqdn, ranked: r, T: r.hackTld === tld ? 1 : (tldFit.get(tld) ?? 0.3) });
     }
   }
-  return out
-    .sort((a, b) => b.ranked.R * b.T - a.ranked.R * a.T || a.fqdn.localeCompare(b.fqdn))
-    .slice(0, MAX_FQDNS);
+  return fairOrder(out, (p) => p.ranked.R * p.T).slice(0, MAX_FQDNS);
+}
+
+/**
+ * Best first within each extension, taking extensions in turn (strongest extension first). A cap then keeps every
+ * extension's best names instead of filling up with one extension, and availability checks spread across
+ * registries, each of which is limited to a few requests per second (spec 005 NFR-AVL-006; 2026-10-04).
+ */
+export function fairOrder(pairs: readonly Pair[], score: (p: Pair) => number): Pair[] {
+  const groups = new Map<string, Array<{ p: Pair; s: number }>>();
+  for (const p of pairs) groups.set(p.tld, [...(groups.get(p.tld) ?? []), { p, s: score(p) }]);
+  const lists = [...groups.values()]
+    .map((g) => g.sort((a, b) => b.s - a.s || a.p.fqdn.localeCompare(b.p.fqdn)))
+    .sort((a, b) => b[0]!.s - a[0]!.s || a[0]!.p.tld.localeCompare(b[0]!.p.tld));
+  const out: Pair[] = [];
+  for (let i = 0; out.length < pairs.length; i++) for (const list of lists) if (list[i]) out.push(list[i]!.p);
+  return out;
 }
 
 /** S = wR·R + wQ·Q + wT·T + wK·K (+ wP·P once prices exist) − penalties (FR-RANK-006, 007). */

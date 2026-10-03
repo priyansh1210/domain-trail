@@ -2,6 +2,7 @@
 // relevance, provider fit and check confidence; top 15, at most 5 per provider. Labels come from the ranked,
 // safety-filtered candidates (FR-FREE-006).
 import { ranking } from '@domains-all/config/defaults';
+import { within } from '@domains-all/config/net';
 import type { FreeChecker, FreeStatus } from './check';
 import type { FreeProvider, ProviderKind } from './providers';
 
@@ -51,7 +52,7 @@ export async function findFreeNames(opts: {
       )
       .slice(0, per)
       .map(async (l) => {
-        const status = await opts.checker.check(l.label, p).catch(() => 'not_verifiable' as const);
+        const status = await within(opts.checker.check(l.label, p), 4000, 'not_verifiable' as const);
         if (status === 'taken') return undefined;
         const confidence = status === 'appears_free' ? 1 : 0.4;
         const result: FreeResult = {
