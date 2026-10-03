@@ -1,6 +1,6 @@
 // HTTP transport to Jev (spec 002 tech §5.2): gateway or direct route, per-request timeout bounded by the stage
 // deadline, limited retries with jittered backoff, request ids logged (FR-JEV-005, 006, 010, 011).
-import type { Logger } from '@domains-all/log';
+import { scrubText, type Logger } from '@domains-all/log';
 import type { SystemOneRequest, SystemOneResponse } from './types';
 
 export const ROUTES = {
@@ -9,6 +9,13 @@ export const ROUTES = {
 } as const;
 
 export type Route = keyof typeof ROUTES;
+
+/** AI Gateway names models "maker/model" ("typesafe-ai/jev-1.13.0"); the rest of the app uses TypeSafe's names. */
+export const GATEWAY_MODEL_PREFIX = 'typesafe-ai/';
+
+export function wireModel(model: string, route: Route): string {
+  return route === 'gateway' && !model.includes('/') ? GATEWAY_MODEL_PREFIX + model : model;
+}
 
 export type SendResult =
   | { ok: true; response: SystemOneResponse; requestId?: string; latencyMs: number }
@@ -58,7 +65,7 @@ export function createHttpTransport(opts: HttpTransportOptions): Transport {
           res = await fetchFn(ROUTES[opts.route], {
             method: 'POST',
             headers: { 'content-type': 'application/json', authorization: `Bearer ${opts.apiKey}` },
-            body: JSON.stringify(body),
+            body: JSON.stringify({ ...body, model: wireModel(body.model, opts.route) }),
             signal: AbortSignal.timeout(Math.min(requestTimeoutMs, remaining)),
           });
         } catch (e) {
@@ -101,19 +108,22 @@ export function createHttpTransport(opts: HttpTransportOptions): Transport {
             opts.log?.warn({ ...logBase, error: 'bad_json' });
             return { ok: false, status: res.status, error: 'invalid', requestId };
           }
+          if (typeof json.model === 'string' && json.model.startsWith(GATEWAY_MODEL_PREFIX))
+            json.model = json.model.slice(GATEWAY_MODEL_PREFIX.length);
           opts.log?.info({ ...logBase, inputTokens: json.usage?.input_tokens });
           return { ok: true, response: json, requestId, latencyMs };
         }
 
+        const detail = await errorDetail(res);
         if (res.status === 401 || res.status === 403) {
-          opts.log?.error({ ...logBase, error: 'auth' });
+          opts.log?.error({ ...logBase, error: 'auth', detail });
           return { ok: false, status: res.status, error: 'auth', requestId };
         }
         if (res.status === 422 || res.status === 400) {
-          opts.log?.error({ ...logBase, error: 'invalid_request' });
+          opts.log?.error({ ...logBase, error: 'invalid_request', detail });
           return { ok: false, status: res.status, error: 'invalid', requestId };
         }
-        opts.log?.warn({ ...logBase, error: RETRYABLE.has(res.status) ? 'retryable' : 'unexpected' });
+        opts.log?.warn({ ...logBase, error: RETRYABLE.has(res.status) ? 'retryable' : 'unexpected', detail });
         if (!RETRYABLE.has(res.status))
           return { ok: false, status: res.status, error: 'retryable', requestId };
         if (!(await backoff(attempt, res.headers.get('retry-after')))) {
@@ -135,4 +145,37 @@ export function createHttpTransport(opts: HttpTransportOptions): Transport {
       }
     },
   };
+}
+
+/** Statuses whose error text never quotes the request (key, credit, address problems): the message is kept. */
+const MESSAGE_SAFE = new Set([401, 402, 403, 404, 405]);
+
+/**
+ * A short reason from an error response, for the logs. Rejected requests (400, 422, 5xx) might quote the
+ * description, so for them only the error type or code is kept (P5).
+ */
+async function errorDetail(res: Response): Promise<string | undefined> {
+  try {
+    const text = (await res.text()).slice(0, 4000);
+    let code: string | undefined;
+    let message: string | undefined;
+    try {
+      const json = JSON.parse(text) as Record<string, unknown>;
+      const err = (typeof json.error === 'object' && json.error !== null ? json.error : json) as Record<
+        string,
+        unknown
+      >;
+      code =
+        [err.error_type, err.type, err.code].filter((x): x is string => typeof x === 'string').join('/') ||
+        undefined;
+      if (!code && typeof json.error === 'string') code = json.error;
+      if (typeof err.message === 'string') message = err.message;
+    } catch {
+      message = text;
+    }
+    const out = MESSAGE_SAFE.has(res.status) ? [code, message].filter(Boolean).join(': ') : code;
+    return out ? scrubText(out.replace(/\s+/g, ' ').trim()).slice(0, 200) : undefined;
+  } catch {
+    return undefined;
+  }
 }
