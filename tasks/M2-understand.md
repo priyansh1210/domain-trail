@@ -57,7 +57,7 @@ Gateway key (E2). Home page JavaScript: 136 KiB gzip / 117 KiB brotli (budget 15
 ## E. Owner steps
 | # | Task | Status |
 |---|---|---|
-| E1 | Review/label the starter golden set (`packages/jev/eval/golden.jsonl`, drafted by Claude) | ⏸ |
+| E1 | Review/label the starter golden set (`packages/jev/eval/golden.jsonl`) — done 2026-10-03: 20 normal examples confirmed, good/bad names for all 30 normal + tricky rows; grows to 170 before launch (M6) | ☑ |
 | E2 | Create the Vercel AI Gateway key (`docs/setup.md` step 3) so the live Jev check and timing can run | ⏸ |
 
 ## Not in M2

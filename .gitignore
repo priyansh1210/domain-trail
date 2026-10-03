@@ -36,3 +36,6 @@ Thumbs.db
 *.dump
 *.age
 *.pem
+
+# owner's labelling spreadsheet (converted into golden.jsonl)
+packages/jev/eval/golden-labels.csv
