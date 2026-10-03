@@ -94,7 +94,18 @@ export function createPriceSource(opts: { live: boolean; fetchFn?: typeof fetch;
         : {}),
       ...(fx.status === 'fulfilled' ? { fx: fx.value } : {}),
     };
+    const why = (r: PromiseSettledResult<unknown>) =>
+      r.status === 'rejected' ? String((r.reason as Error)?.message ?? r.reason) : undefined;
+    refresh = {
+      at: new Date(now()).toISOString(),
+      ok: prices.status === 'fulfilled' && fx.status === 'fulfilled',
+      ...(why(prices) ? { pricesError: why(prices) } : {}),
+      ...(why(fx) ? { fxError: why(fx) } : {}),
+    };
   }
+
+  /** Last refresh attempt, for the health check and logs (FR-PRC-011). */
+  let refresh: { at: string; ok: boolean; pricesError?: string; fxError?: string } | undefined;
 
   return {
     get(): PriceBook {
@@ -109,6 +120,10 @@ export function createPriceSource(opts: { live: boolean; fetchFn?: typeof fetch;
       return book;
     },
     settled: () => inFlight ?? Promise.resolve(),
+    /** When prices and FX rates were fetched, and how the last refresh went. */
+    status() {
+      return { pricesAt: book.pricesAt, fxAsOf: book.fx.asOf, live: opts.live, lastRefresh: refresh };
+    },
   };
 }
 

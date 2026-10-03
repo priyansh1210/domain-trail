@@ -89,6 +89,28 @@ describe('price source', () => {
     expect(offline).not.toHaveBeenCalled();
   });
 
+  it('reports when prices were fetched and why a refresh failed', async () => {
+    const down = vi.fn(async (url: string) =>
+      url.includes('porkbun')
+        ? new Response('', { status: 403 })
+        : Response.json({
+            base: 'USD',
+            date: '2026-10-03',
+            rates: Object.fromEntries(
+              'EUR GBP JPY INR CNY CAD AUD CHF SGD SEK'.split(' ').map((c) => [c, 2]),
+            ),
+          }),
+    );
+    const source = createPriceSource({ live: true, fetchFn: down as unknown as typeof fetch });
+    expect(source.status().lastRefresh).toBeUndefined();
+    source.get();
+    await source.settled();
+    const st = source.status();
+    expect(st.lastRefresh).toMatchObject({ ok: false, pricesError: expect.stringContaining('403') });
+    expect(st.fxAsOf).toBe('2026-10-03');
+    expect(st.pricesAt).toBe(snapshotBook().pricesAt); // the snapshot stays in use
+  });
+
   it('marks prices older than 30 hours as stale', () => {
     const book = { ...snapshotBook(), pricesAt: '2026-10-01T00:00:00Z' };
     expect(isStale(book, Date.parse('2026-10-02T05:00:00Z'))).toBe(false);

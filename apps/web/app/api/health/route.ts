@@ -6,7 +6,17 @@ export const dynamic = 'force-dynamic';
 
 const getHealth = cachedHealth(() => {
   const svc = services();
-  return computeHealth(svc.env, fetch, svc.jev.breakerState());
+  svc.prices.get(); // a health check also starts a due price refresh
+  const p = svc.prices.status();
+  const note = [p.lastRefresh?.pricesError, p.lastRefresh?.fxError].filter(Boolean).join('; ');
+  return computeHealth(svc.env, fetch, svc.jev.breakerState(), {
+    pricesAt: p.pricesAt,
+    fxAsOf: p.fxAsOf,
+    publicData: svc.env.PUBLIC_DATA_MODE,
+    priceRefresh: !p.lastRefresh ? 'not_yet' : p.lastRefresh.ok ? 'ok' : 'failed',
+    ...(note ? { priceRefreshNote: note.slice(0, 200) } : {}),
+    rdapDirectory: svc.rdapPublication(),
+  });
 });
 
 export async function GET() {

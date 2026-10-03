@@ -58,6 +58,8 @@ export interface Services {
   checker: Checker;
   freeChecker: FreeChecker;
   prices: PriceSource;
+  /** Publication date of the RDAP directory in use (health check). */
+  rdapPublication(): string;
   feedback: FeedbackStore;
   limitsEnforced: boolean;
   verifyHuman(token: string, ip: string | undefined): Promise<HumanCheck>;
@@ -83,10 +85,13 @@ export function buildServices(env: ServerEnv): Services {
   // Honest user agent with a contact address for registry operators (spec 005 tech §5.2, §9).
   const userAgent = `${site.name.replace(/[^\w.-]/g, '')}/${PIPELINE_VERSION} (+${site.origin})`;
 
+  const directory = createDirectorySource({ live: publicLive, fetchFn });
+
   return {
     env,
+    rdapPublication: () => directory.get().publication,
     checker: createChecker({
-      directory: createDirectorySource({ live: publicLive, fetchFn }),
+      directory,
       userAgent,
       cache: sb ? new SupabaseAvailabilityCache(sb) : new MemoryAvailabilityCache(),
       fetchFn,
