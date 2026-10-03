@@ -1,0 +1,653 @@
+openapi: 3.1.0
+info:
+  title: domains-all HTTP API (internal, used by the web app)
+  version: 0.2.0
+  description: |
+    Internal API between the browser and the Next.js route handlers.
+    Streaming endpoints return `text/event-stream`; event payloads are defined under
+    `components.schemas.StreamEvent*`. Not a public API (see spec 000 out of scope).
+    Status: Approved (2026-10-03).
+servers:
+  - url: /api
+tags:
+  - name: search
+  - name: domains
+  - name: feedback
+  - name: status
+  - name: account
+paths:
+  /search:
+    post:
+      tags: [search]
+      summary: Start a search. The response body is the event stream.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SearchRequest' }
+      responses:
+        '200':
+          description: Event stream (search_created, progress, features, needs_detail, refused, degraded, batch, update, notice, done, error)
+          content:
+            text/event-stream:
+              schema: { $ref: '#/components/schemas/StreamEvent' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/HumanCheckFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /search/{ref}:
+    get:
+      tags: [search]
+      summary: Snapshot of a stored search (shared links, reloads)
+      parameters: [ { $ref: '#/components/parameters/SearchRef' } ]
+      responses:
+        '200':
+          description: Snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SearchSnapshot' }
+        '404':
+          description: Unknown or expired search
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /search/{ref}/more:
+    post:
+      tags: [search]
+      summary: Find more names in a price band (excludes already shown names)
+      parameters: [ { $ref: '#/components/parameters/SearchRef' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MoreRequest' }
+      responses:
+        '200':
+          description: Event stream (same events as /search, no features event)
+          content:
+            text/event-stream:
+              schema: { $ref: '#/components/schemas/StreamEvent' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /search/{ref}/refine:
+    post:
+      tags: [search]
+      summary: Re-rank with user-edited features (skips feature detection). Signed-in, non-anonymous users only.
+      security: [ { session: [] } ]
+      parameters: [ { $ref: '#/components/parameters/SearchRef' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefineRequest' }
+      responses:
+        '200':
+          description: Event stream
+          content:
+            text/event-stream:
+              schema: { $ref: '#/components/schemas/StreamEvent' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /domains/{fqdn}/recheck:
+    post:
+      tags: [domains]
+      summary: Fresh availability check for one domain (bypasses cache)
+      parameters:
+        - name: fqdn
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9-]{2,63})+$' }
+      responses:
+        '200':
+          description: Check result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CheckResult' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /feedback:
+    post:
+      tags: [feedback]
+      summary: Thumbs up/down or report on a result (anonymous)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [searchRef, fqdn, vote]
+              properties:
+                searchRef: { type: string }
+                fqdn: { type: string }
+                vote: { type: integer, enum: [-1, 1] }
+                reason:
+                  type: string
+                  enum: [offensive, brand, other]
+                  description: Present when the user reports a result (vote must be -1)
+      responses:
+        '202': { description: Accepted }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /events:
+    post:
+      tags: [feedback]
+      summary: Anonymous action events (buy_click, copy)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [searchRef, fqdn, action]
+              properties:
+                searchRef: { type: string }
+                fqdn: { type: string }
+                action: { type: string, enum: [buy_click, copy] }
+      responses:
+        '202': { description: Accepted }
+  /status:
+    get:
+      tags: [status]
+      summary: Data freshness and health
+      responses:
+        '200':
+          description: Status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Status' }
+  /health:
+    get:
+      tags: [status]
+      summary: Liveness/dependency health for uptime monitoring (spec 015); no secrets, cached 30 s
+      responses:
+        '503':
+          description: Same body as 200, returned when ok = false so status-code monitors alert
+        '200':
+          description: Health
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  db: { type: string, enum: [ok, down] }
+                  upstash: { type: string, enum: [ok, down] }
+                  jevBreaker: { type: string, enum: [closed, open] }
+                  version: { type: string, description: git SHA }
+                  mode: { type: string, enum: [live, mock], description: 'mock = MOCK_EXTERNALS=1; db/upstash then report the in-process mocks' }
+  /webhooks/resend:
+    post:
+      tags: [account]
+      summary: E-mail delivery events (bounces) from Resend; signature-verified (spec 011)
+      responses:
+        '200': { description: Accepted }
+        '401': { description: Invalid signature }
+  /me:
+    get:
+      tags: [account]
+      security: [ { session: [] } ]
+      responses:
+        '200':
+          description: Profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [account]
+      security: [ { session: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfileUpdate' }
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    delete:
+      tags: [account]
+      summary: Delete account and all personal data
+      security: [ { session: [] } ]
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /me/export:
+    get:
+      tags: [account]
+      summary: Export all personal data as JSON
+      security: [ { session: [] } ]
+      responses:
+        '200':
+          description: Export file
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /me/merge:
+    post:
+      tags: [account]
+      summary: Move a signed-out visitor's saved items into the signed-in account, then delete the anonymous user (spec 011 §5.7)
+      security: [ { session: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [anonToken]
+              properties:
+                anonToken: { type: string, description: Access token of the anonymous session being merged }
+      responses:
+        '200':
+          description: Merge result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  movedSearches: { type: integer }
+                  movedNames: { type: integer }
+                  skipped: { type: integer, description: Duplicates or items over the limits }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /me/saved-searches:
+    get:
+      tags: [account]
+      security: [ { session: [] } ]
+      responses:
+        '200':
+          description: List
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/SavedSearch' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [account]
+      security: [ { session: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [searchRef, title]
+              properties:
+                searchRef: { type: string }
+                title: { type: string, maxLength: 80 }
+                description: { type: string, minLength: 20, maxLength: 2000, description: 'Signed-in users only; rejected for anonymous sessions' }
+                alertsEnabled: { type: boolean, default: true }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SavedSearch' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { description: Limit reached (max 20 saved searches) }
+  /me/saved-searches/{id}:
+    delete:
+      tags: [account]
+      security: [ { session: [] } ]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /me/watchlist:
+    get:
+      tags: [account]
+      security: [ { session: [] } ]
+      responses:
+        '200':
+          description: Watchlist
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/WatchItem' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [account]
+      security: [ { session: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fqdn]
+              properties:
+                fqdn: { type: string }
+                notifyOn: { type: array, items: { type: string, enum: [status_change, price_change] }, default: [status_change] }
+      responses:
+        '201':
+          description: Added
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WatchItem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { description: Limit reached (max 100 watched domains) }
+  /me/watchlist/{fqdn}:
+    delete:
+      tags: [account]
+      security: [ { session: [] } ]
+      parameters:
+        - { name: fqdn, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /unsubscribe:
+    get:
+      tags: [account]
+      summary: One-click unsubscribe from alert e-mails
+      parameters:
+        - { name: token, in: query, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Unsubscribed (HTML confirmation page) }
+        '400': { description: Invalid token }
+    post:
+      tags: [account]
+      summary: RFC 8058 List-Unsubscribe-Post endpoint
+      parameters:
+        - { name: token, in: query, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Unsubscribed }
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: sb-access-token
+      description: Supabase Auth session cookie (httpOnly, set by @supabase/ssr). Saved-items routes (/me/saved-searches, /me/watchlist, DELETE /me) also accept an anonymous session created on first Save (spec 011 §5.6).
+  parameters:
+    SearchRef:
+      name: ref
+      in: path
+      required: true
+      description: '{uuid}.{hmac8} — search id plus 8-char HMAC suffix'
+      schema: { type: string, pattern: '^[0-9a-f-]{36}\.[0-9a-f]{8}$' }
+  responses:
+    ValidationError:
+      description: Invalid input
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    HumanCheckFailed:
+      description: Human verification failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    RateLimited:
+      description: Too many requests
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Sign-in required
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        message: { type: string }
+        fields: { type: object, additionalProperties: { type: string } }
+        retryAfterSec: { type: integer }
+    Preferences:
+      type: object
+      properties:
+        preferredTlds: { type: array, items: { type: string }, maxItems: 20 }
+        maxLength: { type: integer, minimum: 6, maximum: 20, default: 15 }
+        allowHyphens: { type: boolean, default: false }
+        allowDigits: { type: boolean, default: true }
+        country: { type: string, default: auto, description: "'auto' | 'global' | ISO 3166-1 alpha-2" }
+        priceMinCents: { type: integer, minimum: 0, default: 0 }
+        priceMaxCents: { type: [integer, 'null'], minimum: 0, default: null }
+        includeFree: { type: boolean, default: true }
+        forceSearch: { type: boolean, default: false }
+    SearchRequest:
+      type: object
+      required: [description, preferences, turnstileToken, clientRequestId]
+      properties:
+        description: { type: string, minLength: 20, maxLength: 2000 }
+        preferences: { $ref: '#/components/schemas/Preferences' }
+        turnstileToken: { type: string }
+        clientRequestId: { type: string, format: uuid }
+    MoreRequest:
+      type: object
+      required: [description, priceMinCents, basis, exclude, turnstileToken]
+      properties:
+        description: { type: string, minLength: 20, maxLength: 2000 }
+        priceMinCents: { type: integer, minimum: 0 }
+        priceMaxCents: { type: [integer, 'null'] }
+        basis: { type: string, enum: [upfront, renewal] }
+        exclude: { type: array, items: { type: string }, maxItems: 500 }
+        turnstileToken: { type: string }
+    RefineRequest:
+      type: object
+      required: [description, featureEdits, turnstileToken]
+      properties:
+        description: { type: string, minLength: 20, maxLength: 2000 }
+        featureEdits:
+          type: object
+          description: "Field -> new value, e.g. {\"geo\": \"country_in\", \"flags\": {\"feat_local\": true}}"
+        turnstileToken: { type: string }
+    CheckResult:
+      type: object
+      required: [fqdn, status, method, checkedAt, expiresAt]
+      properties:
+        fqdn: { type: string }
+        status: { type: string, enum: [available, likely_available, available_premium, taken, dropping_soon, unknown] }
+        method: { type: string, enum: [dns, rdap, registrar, nrd, cache] }
+        checkedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        premium:
+          type: object
+          properties:
+            priceCents: { type: integer }
+            currency: { type: string }
+            source: { type: string }
+        dropWindow:
+          type: object
+          properties:
+            start: { type: string, format: date }
+            end: { type: string, format: date }
+    Price:
+      type: object
+      required: [upfrontUsdCents, renewUsdCents, minYears, source, buyUrl]
+      properties:
+        upfrontUsdCents: { type: integer }
+        renewUsdCents: { type: integer }
+        minYears: { type: integer }
+        source: { type: string }
+        buyUrl: { type: string, format: uri }
+        premium: { type: boolean }
+        premiumPossible: { type: boolean }
+        renewWarning: { type: boolean }
+    FreeInfo:
+      type: object
+      properties:
+        providerId: { type: string }
+        conditions:
+          type: object
+          properties:
+            steps: { type: array, items: { type: string } }
+            waitTime: { type: string }
+            eligibility: { type: string }
+            url: { type: string, format: uri }
+    Result:
+      type: object
+      required: [fqdn, label, tld, section, status, checkedAt, score, reasons, strategy]
+      properties:
+        fqdn: { type: string }
+        label: { type: string }
+        tld: { type: string }
+        section: { type: string, enum: [free, budget, mid, premium, dropping, unpriced] }
+        status: { type: string, enum: [available, likely_available, available_premium, dropping_soon, unknown, appears_free, not_verifiable] }
+        checkedAt: { type: string, format: date-time }
+        price: { $ref: '#/components/schemas/Price' }
+        restriction: { type: string }
+        free: { $ref: '#/components/schemas/FreeInfo' }
+        score: { type: number }
+        reasons:
+          type: array
+          maxItems: 3
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              text: { type: string }
+        strategy: { type: string }
+    SiteProfile:
+      type: object
+      description: See spec 003 tech §3 (SiteProfile)
+    SearchSnapshot:
+      type: object
+      required: [searchId, ref, createdAt, profile, results]
+      properties:
+        searchId: { type: string, format: uuid }
+        ref: { type: string }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        profile: { $ref: '#/components/schemas/SiteProfile' }
+        results: { type: array, items: { $ref: '#/components/schemas/Result' } }
+        degraded: { type: boolean }
+    StreamEvent:
+      description: One server-sent event. The `event:` field names the type; `data:` holds JSON.
+      oneOf:
+        - { $ref: '#/components/schemas/StreamEventSearchCreated' }
+        - { $ref: '#/components/schemas/StreamEventProgress' }
+        - { $ref: '#/components/schemas/StreamEventFeatures' }
+        - { $ref: '#/components/schemas/StreamEventNeedsDetail' }
+        - { $ref: '#/components/schemas/StreamEventRefused' }
+        - { $ref: '#/components/schemas/StreamEventDegraded' }
+        - { $ref: '#/components/schemas/StreamEventBatch' }
+        - { $ref: '#/components/schemas/StreamEventUpdate' }
+        - { $ref: '#/components/schemas/StreamEventNotice' }
+        - { $ref: '#/components/schemas/StreamEventDone' }
+        - { $ref: '#/components/schemas/StreamEventError' }
+    StreamEventSearchCreated:
+      type: object
+      properties:
+        event: { const: search_created }
+        data: { type: object, properties: { searchId: { type: string }, ref: { type: string }, cached: { type: boolean } } }
+    StreamEventProgress:
+      type: object
+      properties:
+        event: { const: progress }
+        data: { type: object, properties: { stage: { type: string, enum: [features, names, ranking, availability, pricing] }, pct: { type: integer } } }
+    StreamEventFeatures:
+      type: object
+      properties:
+        event: { const: features }
+        data: { $ref: '#/components/schemas/SiteProfile' }
+    StreamEventNeedsDetail:
+      type: object
+      properties:
+        event: { const: needs_detail }
+        data: { type: object, properties: { hints: { type: array, items: { type: string } } } }
+    StreamEventRefused:
+      type: object
+      properties:
+        event: { const: refused }
+        data: { type: object, properties: { reason: { type: string, enum: [safety] } } }
+    StreamEventDegraded:
+      type: object
+      properties:
+        event: { const: degraded }
+        data: { type: object, properties: { reason: { type: string, enum: [jev_unavailable, budget] } } }
+    StreamEventBatch:
+      type: object
+      properties:
+        event: { const: batch }
+        data: { type: object, properties: { results: { type: array, items: { $ref: '#/components/schemas/Result' } } } }
+    StreamEventUpdate:
+      type: object
+      properties:
+        event: { const: update }
+        data:
+          type: object
+          properties:
+            fqdn: { type: string }
+            status: { type: string }
+            checkedAt: { type: string, format: date-time }
+            price: { $ref: '#/components/schemas/Price' }
+    StreamEventNotice:
+      type: object
+      properties:
+        event: { const: notice }
+        data: { type: object, properties: { code: { type: string, enum: [avl_paused, stale_prices, low_supply] }, message: { type: string } } }
+    StreamEventDone:
+      type: object
+      properties:
+        event: { const: done }
+        data:
+          type: object
+          properties:
+            counts: { type: object, additionalProperties: { type: integer } }
+            durationMs: { type: integer }
+            dataAgeHours: { type: number }
+    StreamEventError:
+      type: object
+      properties:
+        event: { const: error }
+        data: { $ref: '#/components/schemas/Error' }
+    Status:
+      type: object
+      properties:
+        dataAges:
+          type: object
+          description: Hours since last successful refresh per dataset
+          properties:
+            prices: { type: number }
+            tlds: { type: number }
+            nrd: { type: number }
+            freeProviders: { type: number }
+            brandList: { type: number }
+            fx: { type: number }
+        services:
+          type: object
+          properties:
+            search: { type: string, enum: [ok, degraded, down] }
+            decisionModel: { type: string, enum: [ok, degraded, budget_exhausted] }
+            availability: { type: string, enum: [ok, degraded, paused] }
+    Profile:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        email: { type: string, format: email }
+        displayName: { type: string }
+        alertsEnabled: { type: boolean }
+        alertFrequency: { type: string, enum: [daily, weekly] }
+        currency: { type: string }
+        createdAt: { type: string, format: date-time }
+    ProfileUpdate:
+      type: object
+      properties:
+        displayName: { type: string, maxLength: 60 }
+        alertsEnabled: { type: boolean }
+        alertFrequency: { type: string, enum: [daily, weekly] }
+        currency: { type: string }
+    SavedSearch:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        searchRef: { type: string }
+        alertsEnabled: { type: boolean }
+        lastCheckedAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+    WatchItem:
+      type: object
+      properties:
+        fqdn: { type: string }
+        lastStatus: { type: string }
+        lastUpfrontUsdCents: { type: integer }
+        lastCheckedAt: { type: string, format: date-time }
+        notifyOn: { type: array, items: { type: string } }
+        addedAt: { type: string, format: date-time }

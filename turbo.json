@@ -1,0 +1,17 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "agentGuidance": false,
+  "globalDependencies": ["tsconfig.base.json"],
+  "globalEnv": ["MOCK_EXTERNALS", "NODE_ENV"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": ["NEXT_PUBLIC_*", "VERCEL_GIT_COMMIT_SHA"]
+    },
+    "typecheck": { "dependsOn": ["^typecheck"] },
+    "lint": {},
+    "test": { "outputs": [] },
+    "dev": { "cache": false, "persistent": true }
+  }
+}

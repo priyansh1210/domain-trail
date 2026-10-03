@@ -1,0 +1,34 @@
+# Spec 017 tech §5.2 (FR-INF-004): production migrations only from main, only after the owner approves the
+# run in the protected "production" environment.
+name: migrate
+
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/migrations/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrate
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply pending migrations
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: pnpm exec supabase db push --db-url "$SUPABASE_DB_URL"

@@ -1,0 +1,58 @@
+# Spec 016 tech §1 (FR-QA-002): every change must pass these checks before merging to main.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MOCK_EXTERNALS: '1' # tests never call live services (FR-QA-003)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm trace:check
+      - run: pnpm build
+
+  db:
+    # Applies every migration to a real local Supabase stack (complements the PGlite tests in packages/db).
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Start Supabase (database + auth only)
+        run: pnpm exec supabase start -x studio
+      - name: Apply migrations from scratch
+        run: pnpm exec supabase db reset
+      - name: Lint database functions
+        run: pnpm exec supabase db lint --level error
+      - name: Schema matches migrations (no drift)
+        run: |
+          pnpm exec supabase db diff --schema public > drift.sql
+          if [ -s drift.sql ]; then cat drift.sql; exit 1; fi

@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+.next/
+.turbo/
+coverage/
+dist/
+docs/
+specs/
+tasks/
+*.md
+supabase/migrations/

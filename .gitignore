@@ -1,0 +1,38 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds and caches
+.next/
+out/
+dist/
+build/
+.turbo/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# env files (only .env.example is committed)
+.env
+.env.*
+!.env.example
+
+# supabase local state
+supabase/.branches/
+supabase/.temp/
+
+# test output
+playwright-report/
+test-results/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# never commit backups or keys
+*.dump
+*.age
+*.pem

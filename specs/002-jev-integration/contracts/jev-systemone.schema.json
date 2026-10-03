@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domains-all.local/contracts/jev-systemone.schema.json",
+  "title": "TypeSafe Jev /v1/systemone contract (as used by domains-all)",
+  "description": "Request and response shapes for POST /v1/systemone. Field names verified 2026-09-29 from public docs (see tech.md §3). Items marked 'R-01' are to be re-verified against the official reference before implementation.",
+  "$defs": {
+    "ChoiceQuestion": {
+      "type": "object",
+      "required": ["type", "instructions", "criteria"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "choice" },
+        "instructions": { "type": "string", "minLength": 1 },
+        "criteria": {
+          "description": "Option key -> option description. Max 255 options. Keys: we use [a-z0-9_] only (R-01: confirm allowed characters).",
+          "type": "object",
+          "minProperties": 2,
+          "maxProperties": 255,
+          "propertyNames": { "pattern": "^[a-z0-9_]{1,64}$" },
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "ScoreQuestion": {
+      "type": "object",
+      "required": ["type", "instructions", "criteria"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "score" },
+        "instructions": { "type": "string", "minLength": 1 },
+        "criteria": {
+          "description": "Ordered rubric levels from lowest to highest. 2 to 10 levels.",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 10,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "NoulQuestion": {
+      "type": "object",
+      "required": ["type", "instructions"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "noul" },
+        "instructions": { "type": "string", "minLength": 1, "description": "A statement about the state; the answer is the probability it is true." }
+      }
+    },
+    "Question": {
+      "oneOf": [
+        { "$ref": "#/$defs/ChoiceQuestion" },
+        { "$ref": "#/$defs/ScoreQuestion" },
+        { "$ref": "#/$defs/NoulQuestion" }
+      ]
+    },
+    "Probability": { "type": "number", "minimum": 0, "maximum": 1 },
+    "ChoiceAnswer": {
+      "type": "object",
+      "required": ["type", "choice", "probabilities", "confidence"],
+      "properties": {
+        "type": { "const": "choice" },
+        "choice": { "type": "string" },
+        "probabilities": { "type": "object", "additionalProperties": { "$ref": "#/$defs/Probability" } },
+        "confidence": { "$ref": "#/$defs/Probability" }
+      }
+    },
+    "ScoreAnswer": {
+      "type": "object",
+      "required": ["type", "score", "probabilities", "confidence"],
+      "properties": {
+        "type": { "const": "score" },
+        "score": { "type": "number", "minimum": 0, "description": "Expected value over rubric levels (can be fractional)." },
+        "probabilities": {
+          "description": "Probability per rubric level. R-01: confirm array vs object form; both accepted.",
+          "oneOf": [
+            { "type": "array", "items": { "$ref": "#/$defs/Probability" } },
+            { "type": "object", "additionalProperties": { "$ref": "#/$defs/Probability" } }
+          ]
+        },
+        "legend": { "type": "object", "additionalProperties": { "type": "string" } },
+        "confidence": { "$ref": "#/$defs/Probability" }
+      }
+    },
+    "NoulAnswer": {
+      "type": "object",
+      "required": ["type", "noul"],
+      "properties": {
+        "type": { "const": "noul" },
+        "noul": { "$ref": "#/$defs/Probability" }
+      }
+    },
+    "Answer": {
+      "oneOf": [
+        { "$ref": "#/$defs/ChoiceAnswer" },
+        { "$ref": "#/$defs/ScoreAnswer" },
+        { "$ref": "#/$defs/NoulAnswer" }
+      ]
+    }
+  },
+  "type": "object",
+  "properties": {
+    "request": {
+      "type": "object",
+      "required": ["model", "state", "questions"],
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string",
+          "description": "Pinned version in production, e.g. 'jev-1.13.0'. Aliases 'jev-latest'/'jev-preview' are allowed only in evaluation.",
+          "pattern": "^jev-(\\d+\\.\\d+\\.\\d+|latest|preview)$"
+        },
+        "state": {
+          "description": "Text or JSON the questions are evaluated against. State + longest question must be <= 32k tokens; whole request <= 64k tokens.",
+          "oneOf": [{ "type": "string" }, { "type": "object" }, { "type": "array" }]
+        },
+        "questions": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "pattern": "^[a-z0-9_]{1,80}$" },
+          "additionalProperties": { "$ref": "#/$defs/Question" }
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "required": ["model", "answers", "usage"],
+      "properties": {
+        "model": { "type": "string", "description": "Resolved model version, e.g. 'jev-1.13.0'." },
+        "answers": { "type": "object", "additionalProperties": { "$ref": "#/$defs/Answer" } },
+        "usage": {
+          "type": "object",
+          "required": ["input_tokens"],
+          "properties": {
+            "input_tokens": { "type": "integer", "minimum": 0 },
+            "output_tokens": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "responseHeaders": {
+      "type": "object",
+      "properties": {
+        "x-typesafe-request-id": { "type": "string", "description": "Log with every call; include in support requests." }
+      }
+    },
+    "errorStatuses": {
+      "description": "401 missing/invalid key (no retry); 422 invalid body (no retry); 429 rate limit (retry with backoff); 529 overloaded (retry with backoff); 5xx (retry with backoff).",
+      "type": "array",
+      "items": { "enum": [401, 422, 429, 529, 500, 502, 503, 504] }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+@import 'tailwindcss';
+
+:root {
+  --bg: #ffffff;
+  --fg: #111827;
+  --muted: #4b5563;
+  --accent: #1d4ed8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1120;
+    --fg: #f3f4f6;
+    --muted: #9ca3af;
+    --accent: #93c5fd;
+  }
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
