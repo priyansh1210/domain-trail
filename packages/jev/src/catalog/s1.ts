@@ -1,0 +1,313 @@
+// Stage S1 questions: safety + site profile + feature flags (questions/catalog.md, v1).
+// Any change to instructions or criteria needs a new version (FR-JEV-002); catalog-sync.test.ts keeps this file
+// and catalog.md identical.
+import type { ChoiceDef, NoulDef, ScoreDef } from '../types';
+
+const noul = (id: string, group: NoulDef['group'], instructions: string): NoulDef => ({
+  id,
+  version: 1,
+  group,
+  type: 'noul',
+  instructions,
+});
+
+export const safety: NoulDef[] = [
+  noul(
+    'safety_phishing',
+    'safety',
+    'The website described is intended to trick people into giving passwords, payment details or personal data, or to pretend to be another organization.',
+  ),
+  noul(
+    'safety_illegal',
+    'safety',
+    'The website described is mainly for clearly illegal activity, such as selling illegal drugs or weapons, fraud, counterfeit goods or exploiting children.',
+  ),
+  noul(
+    'safety_impersonation',
+    'safety',
+    'The description asks for names that copy or imitate an existing well-known brand, company, product or public figure.',
+  ),
+  noul('safety_adult', 'safety', 'The website described is mainly adult or sexual content.'),
+];
+
+export const siteType: ChoiceDef = {
+  id: 'site_type',
+  version: 1,
+  group: 'features',
+  type: 'choice',
+  instructions: 'What kind of website is described?',
+  criteria: {
+    online_store: 'Online store selling products',
+    saas_web_app: 'Software or web application (SaaS)',
+    mobile_app: 'Website promoting a mobile app',
+    blog: 'Blog or personal writing',
+    news_media: 'News, magazine or media publication',
+    portfolio: "Portfolio showing someone's work",
+    personal_site: 'Personal homepage or CV',
+    agency_services: 'Agency, consultancy or freelance services',
+    local_business: 'Local business serving a city or area',
+    restaurant_cafe: 'Restaurant, café, bakery or food service',
+    nonprofit: 'Non-profit, charity or cause',
+    education_courses: 'Courses, tutoring or education',
+    community_forum: 'Community, forum or membership group',
+    marketplace: 'Marketplace connecting buyers and sellers',
+    directory_listings: 'Directory, listings or reviews site',
+    event: 'Event, conference or festival',
+    startup_landing: 'Startup or product landing page',
+    docs_open_source: 'Documentation or open-source project',
+    podcast_video: 'Podcast, video channel or creator',
+    booking_service: 'Appointment or reservation service',
+    real_estate: 'Real estate agency or property listings',
+    healthcare_practice: 'Clinic, doctor, therapist or wellness practice',
+    professional_practice: 'Law, accounting or other professional firm',
+    job_board: 'Jobs or recruiting',
+    game: 'Game or gaming site',
+    other: 'Something else',
+  },
+};
+
+/** Options come from the industry taxonomy at runtime (spec 003 tech §5.1). */
+export const industry: ChoiceDef = {
+  id: 'industry',
+  version: 1,
+  group: 'features',
+  type: 'choice',
+  instructions: 'Which industry or topic does this website belong to?',
+  criteria: 'runtime',
+};
+
+export const audience: ChoiceDef = {
+  id: 'audience',
+  version: 1,
+  group: 'features',
+  type: 'choice',
+  instructions: 'Who is the main audience of this website?',
+  criteria: {
+    consumers_general: 'General consumers',
+    young_adults: 'Teens and young adults',
+    families_kids: 'Parents, families and children',
+    seniors: 'Older adults',
+    students: 'Students and learners',
+    professionals: 'Working professionals',
+    small_businesses: 'Small businesses and shop owners',
+    enterprises: 'Large companies',
+    developers: 'Software developers and technical users',
+    creators: 'Artists, writers and content creators',
+    local_community: 'People in one local area',
+    investors: 'Investors and finance-minded users',
+    patients: 'Patients and people seeking care',
+    travelers: 'Travelers and tourists',
+    gamers: 'Gamers',
+    donors_volunteers: 'Donors and volunteers',
+    other: 'Other audience',
+  },
+};
+
+export const COUNTRIES: Record<string, string> = {
+  in: 'India',
+  us: 'United States',
+  gb: 'United Kingdom',
+  ca: 'Canada',
+  au: 'Australia',
+  nz: 'New Zealand',
+  ie: 'Ireland',
+  de: 'Germany',
+  fr: 'France',
+  es: 'Spain',
+  it: 'Italy',
+  nl: 'Netherlands',
+  be: 'Belgium',
+  ch: 'Switzerland',
+  at: 'Austria',
+  se: 'Sweden',
+  no: 'Norway',
+  dk: 'Denmark',
+  fi: 'Finland',
+  pl: 'Poland',
+  pt: 'Portugal',
+  gr: 'Greece',
+  cz: 'Czechia',
+  ro: 'Romania',
+  hu: 'Hungary',
+  tr: 'Turkey',
+  ua: 'Ukraine',
+  br: 'Brazil',
+  mx: 'Mexico',
+  ar: 'Argentina',
+  co: 'Colombia',
+  cl: 'Chile',
+  pe: 'Peru',
+  za: 'South Africa',
+  ng: 'Nigeria',
+  ke: 'Kenya',
+  eg: 'Egypt',
+  ma: 'Morocco',
+  ae: 'United Arab Emirates',
+  sa: 'Saudi Arabia',
+  il: 'Israel',
+  pk: 'Pakistan',
+  bd: 'Bangladesh',
+  lk: 'Sri Lanka',
+  np: 'Nepal',
+  sg: 'Singapore',
+  my: 'Malaysia',
+  id: 'Indonesia',
+  ph: 'Philippines',
+  th: 'Thailand',
+  vn: 'Vietnam',
+  jp: 'Japan',
+  kr: 'South Korea',
+  cn: 'China',
+  hk: 'Hong Kong',
+  tw: 'Taiwan',
+};
+
+export const geoScope: ChoiceDef = {
+  id: 'geo_scope',
+  version: 1,
+  group: 'features',
+  type: 'choice',
+  instructions: 'Which country or region does this website mainly serve?',
+  criteria: {
+    global: 'Global (no single country or region)',
+    region_europe: 'Europe',
+    region_asia: 'Asia',
+    region_latam: 'Latin America',
+    region_africa: 'Africa',
+    region_middle_east: 'Middle East',
+    ...Object.fromEntries(Object.entries(COUNTRIES).map(([iso, name]) => [`country_${iso}`, name])),
+    other_country: 'Another single country',
+  },
+};
+
+export const LANGUAGES: Record<string, string> = {
+  en: 'English',
+  hi: 'Hindi',
+  bn: 'Bengali',
+  ta: 'Tamil',
+  te: 'Telugu',
+  mr: 'Marathi',
+  es: 'Spanish',
+  pt: 'Portuguese',
+  fr: 'French',
+  de: 'German',
+  it: 'Italian',
+  nl: 'Dutch',
+  ru: 'Russian',
+  ar: 'Arabic',
+  tr: 'Turkish',
+  ja: 'Japanese',
+  ko: 'Korean',
+  zh: 'Chinese',
+  id: 'Indonesian',
+  vi: 'Vietnamese',
+  th: 'Thai',
+  pl: 'Polish',
+  other: 'Another language',
+};
+
+export const language: ChoiceDef = {
+  id: 'language',
+  version: 1,
+  group: 'features',
+  type: 'choice',
+  instructions: 'In which language will the website mainly be written?',
+  criteria: LANGUAGES,
+};
+
+export const nameStyle: ChoiceDef = {
+  id: 'name_style',
+  version: 1,
+  group: 'features',
+  type: 'choice',
+  instructions: 'Which naming style would suit this website best, given its type, audience and tone?',
+  criteria: {
+    descriptive: 'Says clearly what it does (e.g. "freshbreaddelivery")',
+    compound: 'Two real words combined (e.g. "sunnycrust")',
+    brandable: 'Short invented word that is easy to say (e.g. "zapora")',
+    personal_name: "Based on a person's name",
+    playful: 'Fun, witty or pun-based',
+    short_premium: 'Very short (3–6 letters), premium-sounding',
+  },
+};
+
+export const tone: ScoreDef = {
+  id: 'tone',
+  version: 1,
+  group: 'features',
+  type: 'score',
+  instructions: "What tone should the website's name have?",
+  criteria: [
+    'Very playful and fun',
+    'Friendly and casual',
+    'Neutral',
+    'Professional',
+    'Very formal and serious',
+  ],
+};
+
+export const clarity: ScoreDef = {
+  id: 'clarity',
+  version: 1,
+  group: 'features',
+  type: 'score',
+  instructions: 'How clearly does the description explain what the website offers and for whom?',
+  criteria: [
+    'Too vague to know what the website does',
+    'General idea, but missing what it offers or who it is for',
+    'Clear offering and audience',
+    'Very specific: offering, audience and place or style',
+  ],
+};
+
+/** Statement completions for "The website described …" (catalog.md feature-flag table). */
+export const FLAG_STATEMENTS = {
+  feat_sells_physical: 'sells physical products online.',
+  feat_sells_digital: 'sells digital products such as downloads, templates or e-books.',
+  feat_subscription: 'charges a recurring subscription.',
+  feat_software: 'is a software product or web application.',
+  feat_mobile_app: 'mainly promotes a mobile app.',
+  feat_developer: 'is aimed at software developers or technical users.',
+  feat_ai: 'is built around artificial intelligence.',
+  feat_bookings: 'lets people book appointments, tables or reservations.',
+  feat_local: 'serves customers in a specific city or local area in person.',
+  feat_food: 'is about food, drinks, cooking or restaurants.',
+  feat_articles: 'regularly publishes articles, news or blog posts.',
+  feat_media: 'publishes videos or podcasts.',
+  feat_courses: 'teaches through courses, lessons or tutoring.',
+  feat_community: 'lets members talk to each other or join a community.',
+  feat_marketplace: 'connects many sellers or providers with buyers.',
+  feat_portfolio: 'shows the work of a person or studio.',
+  feat_personal: 'is about one individual person.',
+  feat_nonprofit: 'belongs to a non-profit, charity or cause.',
+  feat_donations: 'asks visitors for donations.',
+  feat_events: 'promotes or sells tickets to events.',
+  feat_jobs: 'lists jobs or helps with hiring.',
+  feat_real_estate: 'lists properties for sale or rent.',
+  feat_travel: 'is about travel, tourism or accommodation.',
+  feat_health: 'offers health, medical or wellness services.',
+  feat_finance: 'offers financial, payment or investment services.',
+  feat_legal: 'offers legal services.',
+  feat_school: 'belongs to a school, college or educational institution.',
+  feat_kids: 'is designed for children or families.',
+  feat_gaming: 'is about video games or gaming.',
+  feat_crypto: 'is about cryptocurrency, blockchain or web3.',
+  feat_b2b: 'mainly sells to other businesses.',
+  feat_agency: 'offers agency, consulting or freelance services.',
+  feat_directory: 'is a directory, listings or reviews site.',
+  feat_docs: 'hosts documentation or an open-source project.',
+  feat_multilingual: 'serves several countries or languages.',
+  feat_luxury: 'has a premium or luxury brand image.',
+  feat_eco: 'focuses on sustainability or the environment.',
+  feat_fitness: 'is about fitness, sports or outdoor activities.',
+  feat_fashion_beauty: 'is about fashion, clothing or beauty.',
+  feat_pets: 'is about pets or animals.',
+} as const satisfies Record<string, string>;
+
+export type FeatureFlag = keyof typeof FLAG_STATEMENTS;
+
+export const flags: NoulDef[] = Object.entries(FLAG_STATEMENTS).map(([id, statement]) =>
+  noul(id, 'features', `The website described ${statement}`),
+);
+
+export const profile = [siteType, industry, audience, geoScope, language, nameStyle, tone, clarity];

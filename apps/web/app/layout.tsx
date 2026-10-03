@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { siteIdentity } from '@domains-all/config';
+import { t } from '@/lib/i18n';
 import './globals.css';
 
 const site = siteIdentity();
@@ -8,13 +10,35 @@ const site = siteIdentity();
 export const metadata: Metadata = {
   metadataBase: site.url,
   title: { default: site.name, template: `%s · ${site.name}` },
-  description: 'Describe your website and get available domain names, grouped by price and checked daily.',
+  description: t('home.tagline'),
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-dvh antialiased">{children}</body>
+      <body className="flex min-h-dvh flex-col antialiased">
+        <header className="border-b border-[var(--border)]">
+          <div className="mx-auto max-w-3xl px-4 py-3">
+            <Link href="/" className="text-lg font-semibold">
+              {site.name}
+            </Link>
+          </div>
+        </header>
+        <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">{children}</main>
+        <footer className="border-t border-[var(--border)]">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-4 text-sm text-[var(--muted)]">
+            <p>{t('footer.disclaimer')}</p>
+            <nav aria-label="Footer" className="flex gap-4">
+              <Link href="/privacy" className="underline">
+                {t('footer.privacy')}
+              </Link>
+              <Link href="/terms" className="underline">
+                {t('footer.terms')}
+              </Link>
+            </nav>
+          </div>
+        </footer>
+      </body>
     </html>
   );
 }

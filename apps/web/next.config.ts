@@ -18,7 +18,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ['@domains-all/config', '@domains-all/log'],
+  transpilePackages: ['@domains-all/config', '@domains-all/core', '@domains-all/jev', '@domains-all/log'],
+  serverExternalPackages: ['wink-nlp', 'wink-eng-lite-web-model'],
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

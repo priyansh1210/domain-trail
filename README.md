@@ -5,8 +5,9 @@ budget (**Free · $1–100 · $101–300 · $300+**) with a **price range slider
 It uses **Jev** (TypeSafe's decision model) to understand the site and judge names, and runs entirely on
 **free plans**.
 
-> **Current phase: 1 — MVP implementation (milestone M1 · Skeleton).** All specs were approved by the owner on
-> 2026-10-03; the answers are recorded in each spec's "Owner decisions" section.
+> **Current phase: 1 — MVP implementation.** M1 (skeleton) is done and live at https://domain-trail.vercel.app;
+> M2 (understand the description: Jev client, feature chips) is in review — see [tasks/](tasks/). All specs were
+> approved by the owner on 2026-10-03; the answers are recorded in each spec's "Owner decisions" section.
 > The project follows **spec-driven development**: `spec.md` = *what* and *why*; `tech.md` = *how*;
 > `tasks.md` = the ordered steps to build it.
 
@@ -63,6 +64,8 @@ specs/NNN-feature/
 tasks/                     ordered task lists per milestone (M1-skeleton.md, …)
 apps/web/                  the website (Next.js) — pages and API routes
 packages/config/           settings, limits and environment validation
+packages/core/             intake, feature detection, safety gate, pipeline stages
+packages/jev/              Jev decision-model client, question catalog, mock engine, evaluation set
 packages/db/               money/time helpers + database schema tests
 packages/log/              logger that removes personal data
 supabase/                  database migrations and local config

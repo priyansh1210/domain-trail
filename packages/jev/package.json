@@ -1,0 +1,24 @@
+{
+  "name": "@domains-all/jev",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./catalog": "./src/catalog/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@domains-all/config": "workspace:*",
+    "@domains-all/log": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0",
+    "vitest": "^5.0.3"
+  }
+}

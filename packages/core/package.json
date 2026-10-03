@@ -1,0 +1,28 @@
+{
+  "name": "@domains-all/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./client/normalize": "./src/intake/normalize.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@domains-all/config": "workspace:*",
+    "@domains-all/jev": "workspace:*",
+    "@domains-all/log": "workspace:*",
+    "uuidv7": "^1.2.1",
+    "wink-eng-lite-web-model": "^1.8.1",
+    "wink-nlp": "^2.4.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.3"
+  }
+}

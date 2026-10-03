@@ -82,6 +82,25 @@ export const jev = {
   evalMonthlyTokenCap: 10_000_000,
 } as const;
 
+/** Spec 003 tech §5.2 thresholds and spec 014 tech §5.3 safety thresholds. */
+export const features = {
+  flagOn: 0.6,
+  unsureConfidence: 0.55,
+  alternativesMinP: 0.1,
+  alternativesMax: 3,
+  clarityVagueBelow: 1.0,
+  rulesConfidence: 0.4,
+  adultOn: 0.7,
+} as const;
+
+export const safety = {
+  refuseAt: 0.8, // safety_phishing, safety_illegal
+  strictBrandAt: 0.7, // safety_impersonation
+} as const;
+
+/** Spec 002 tech §10: per-stage deadlines for Jev decisions. */
+export const stageDeadlinesMs = { S1: 4000, S2: 3000, S5: 3000, S6: 4000 } as const;
+
 /** Spec 011 FR-ACC-004/005/008/019. */
 export const accounts = {
   savedSearchesMax: 20,

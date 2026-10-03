@@ -53,10 +53,12 @@ export async function checkUpstash(env: ServerEnv, fetchFn: FetchFn = fetch): Pr
   return body?.result === 'PONG' ? 'ok' : 'down';
 }
 
-export async function computeHealth(env: ServerEnv, fetchFn: FetchFn = fetch): Promise<Health> {
+export async function computeHealth(
+  env: ServerEnv,
+  fetchFn: FetchFn = fetch,
+  jevBreaker: 'closed' | 'open' = 'closed',
+): Promise<Health> {
   const version = env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? 'local';
-  // M2: read the real circuit-breaker state from packages/jev; there is no Jev client yet.
-  const jevBreaker = 'closed' as const;
   if (env.MOCK_EXTERNALS) {
     // Mock mode uses in-process fixtures for every dependency (spec 016 FR-QA-003).
     return { ok: true, db: 'ok', upstash: 'ok', jevBreaker, version, mode: 'mock' };
