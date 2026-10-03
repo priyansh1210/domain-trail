@@ -40,8 +40,8 @@ persisted snapshot via `GET /api/search/{id}`.
 
 | Concern | Choice | Notes |
 |---|---|---|
-| Form | React client component + `react-hook-form` + `zodResolver` | same zod schema on client + server |
-| Human check | Cloudflare Turnstile, invisible/managed mode | `@marsidev/react-turnstile` wrapper |
+| Form | React client component with plain state | light checks in the browser for instant feedback; the shared `zod/mini` schema validates on the server and its field messages are shown in the form (changed 2026-10-03: shipping `zod` + `react-hook-form` to the browser broke NFR-INT-004) |
+| Human check | Cloudflare Turnstile, invisible/managed mode | small own loader for the explicit-render API, script fetched on first focus (no wrapper library, NFR-INT-004) |
 | Normalization | `String.prototype.normalize('NFKC')`, regexes | no dependency |
 | Hashing | Node `crypto.createHash('sha256')` | |
 | IDs | `uuidv7` | search ids (unguessable because of 74 random bits + UUID in URL; see §9) |
@@ -143,7 +143,7 @@ re-checked in the stream (spec 005), so reused results are never stale.
 - Description never logged; Sentry `beforeSend` strips request bodies for `/api/search` (spec 013).
 - Search ids are UUIDv7 (time-ordered) — to avoid guessable neighbours, results URLs use `/s/{id}.{hmac8}` where
   `hmac8 = first 8 chars of HMAC(SEARCH_LINK_SECRET, id)`; requests with a wrong suffix → 404.
-- Body size limit 8 KB on the route.
+- Body size limit 16 KB on the route (spec 014 FR-ABU-009).
 
 ## 10. Performance and cost budgets
 - Route handler work before 202: < 300 ms p95 (Turnstile ~100 ms, Upstash ~20 ms, Supabase ~50 ms).

@@ -29,6 +29,8 @@ export const serverEnvSchema = publicEnvSchema
     MOCK_EXTERNALS: z.stringbool().default(true),
     EMAIL_MODE: z.enum(['off', 'on']).default('off'),
     ALERT_CHANNEL: z.enum(['email', 'chat']).default('email'),
+    // 'off' is honoured only together with MOCK_EXTERNALS=1 (local end-to-end tests); production always enforces.
+    RATE_LIMIT_MODE: z.enum(['enforce', 'off']).default('enforce'),
 
     SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
     SUPABASE_DB_URL: z.string().optional(),

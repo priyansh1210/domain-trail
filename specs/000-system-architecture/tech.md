@@ -50,7 +50,7 @@
 | Concern | Choice | Version / notes |
 |---|---|---|
 | Runtime | Node.js | 22 LTS |
-| Language | TypeScript | 5.x, `strict: true` |
+| Language | TypeScript | 6.x, `strict: true` (upgraded from 5.x on 2026-10-03 via Dependabot; TypeScript 7's native compiler to be evaluated before adopting) |
 | Monorepo | pnpm workspaces + Turborepo | free, local + remote cache off |
 | Web framework | Next.js (App Router, route handlers, RSC) | latest stable at implementation time |
 | UI | Tailwind CSS + shadcn/ui (Radix primitives) | accessible components |

@@ -33,6 +33,12 @@ paths:
               schema: { $ref: '#/components/schemas/StreamEvent' }
         '400': { $ref: '#/components/responses/ValidationError' }
         '403': { $ref: '#/components/responses/HumanCheckFailed' }
+        '409':
+          description: Same clientRequestId seen in the last 60 s; body carries the existing `ref` so the client can load its snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '413': { description: Request body larger than 16 KB (spec 014 FR-ABU-009) }
         '429': { $ref: '#/components/responses/RateLimited' }
   /search/{ref}:
     get:
@@ -397,6 +403,7 @@ components:
         message: { type: string }
         fields: { type: object, additionalProperties: { type: string } }
         retryAfterSec: { type: integer }
+        ref: { type: string, description: Existing search reference (409 duplicate only) }
     Preferences:
       type: object
       properties:
@@ -513,6 +520,7 @@ components:
         ref: { type: string }
         createdAt: { type: string, format: date-time }
         expiresAt: { type: string, format: date-time }
+        status: { type: string, enum: [running, done, refused, needs_detail, error] }
         profile: { $ref: '#/components/schemas/SiteProfile' }
         results: { type: array, items: { $ref: '#/components/schemas/Result' } }
         degraded: { type: boolean }
@@ -580,7 +588,7 @@ components:
       type: object
       properties:
         event: { const: notice }
-        data: { type: object, properties: { code: { type: string, enum: [avl_paused, stale_prices, low_supply] }, message: { type: string } } }
+        data: { type: object, properties: { code: { type: string, enum: [avl_paused, stale_prices, low_supply, not_saved], description: 'not_saved = storage unavailable; results work now but cannot be shared or reloaded (spec 000 tech §8)' }, message: { type: string } } }
     StreamEventDone:
       type: object
       properties:

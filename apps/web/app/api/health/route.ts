@@ -1,9 +1,13 @@
-import { observability, serverEnv } from '@domains-all/config';
+import { observability } from '@domains-all/config';
 import { cachedHealth, computeHealth } from '@/lib/health';
+import { services } from '@/lib/server/services';
 
 export const dynamic = 'force-dynamic';
 
-const getHealth = cachedHealth(() => computeHealth(serverEnv()));
+const getHealth = cachedHealth(() => {
+  const svc = services();
+  return computeHealth(svc.env, fetch, svc.jev.breakerState());
+});
 
 export async function GET() {
   const health = await getHealth();
