@@ -26,4 +26,12 @@ describe('normalize', () => {
   it('keeps non-Latin scripts intact', () => {
     expect(normalize('पुणे में ताज़ी ब्रेड की बेकरी').text).toBe('पुणे में ताज़ी ब्रेड की बेकरी');
   });
+
+  it('stays fast on hostile input (CodeQL js/polynomial-redos)', () => {
+    const t0 = performance.now();
+    normalize('+'.repeat(16_000));
+    normalize(`${'1'.repeat(16_000)}x`);
+    normalize('a.'.repeat(8_000));
+    expect(performance.now() - t0).toBeLessThan(100);
+  });
 });

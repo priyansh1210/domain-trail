@@ -1,7 +1,7 @@
 // Spec 013 tech §11 `log-redaction.test.ts`: description / e-mail / IP never logged.
 import { Writable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
-import { createLogger, REDACTED, scrub } from '../src/index';
+import { createLogger, REDACTED, scrub, scrubText } from '../src/index';
 
 function capture() {
   const lines: string[] = [];
@@ -57,5 +57,14 @@ describe('logger redaction', () => {
       name: 'Error',
       message: 'bounce from [email]',
     });
+  });
+
+  it('stays fast on hostile input and cuts very long text (CodeQL js/polynomial-redos)', () => {
+    const t0 = performance.now();
+    scrubText('+'.repeat(16_000));
+    scrubText('a.'.repeat(8_000));
+    expect(performance.now() - t0).toBeLessThan(100);
+    expect(scrubText('x'.repeat(20_000)).length).toBeLessThan(10_100);
+    expect(scrubText(`mail ${EMAIL} please`)).toBe('mail [email] please');
   });
 });
