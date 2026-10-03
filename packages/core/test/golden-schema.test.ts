@@ -50,6 +50,13 @@ describe('golden set', () => {
     }
   });
 
+  it('has good and bad names for every normal example, so ranking can be measured (NDCG@10)', () => {
+    for (const g of golden.filter((x) => x.category === 'benign')) {
+      expect(g.goodNames?.length ?? 0, g.id).toBeGreaterThanOrEqual(3);
+      expect(g.badNames?.length ?? 0, g.id).toBeGreaterThanOrEqual(2);
+    }
+  });
+
   it('contains no e-mail addresses or phone numbers (FR-QA-011)', () => {
     for (const g of golden) {
       expect(g.description, g.id).not.toMatch(/[\w.+-]+@[\w-]+\.\w+/);
