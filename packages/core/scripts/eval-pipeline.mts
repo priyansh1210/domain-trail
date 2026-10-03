@@ -75,10 +75,19 @@ async function gatewayModels(apiKey: string): Promise<string> {
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return `could not list models (status ${res.status})`;
+    // The gateway answers { models: [{ name, release_date }] }; other shapes use { data: [{ id }] }.
     const json = (await res.json()) as { data?: unknown[]; models?: unknown[] };
-    const ids = (json.data ?? json.models ?? [])
-      .map((m) => (typeof m === 'string' ? m : (m as { id?: unknown }).id))
-      .filter((x): x is string => typeof x === 'string');
+    const names = (json.models ?? json.data ?? []).map((m) => {
+      if (typeof m === 'string') return m;
+      const {
+        id,
+        name,
+        release_date: released,
+      } = m as { id?: unknown; name?: unknown; release_date?: unknown };
+      const label = typeof name === 'string' ? name : typeof id === 'string' ? id : undefined;
+      return label && typeof released === 'string' ? `${label} (released ${released})` : label;
+    });
+    const ids = names.filter((x): x is string => typeof x === 'string');
     return ids.length ? ids.join(', ') : 'no models listed';
   } catch {
     return 'could not reach the model list';

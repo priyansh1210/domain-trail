@@ -98,14 +98,15 @@ describe('http transport', () => {
     expect(JSON.parse(String(calls[0]!.init.body)).model).toBe('jev-1.13.0');
   });
 
-  it('uses AI Gateway model names on the gateway route and TypeSafe names elsewhere', async () => {
+  it("uses the gateway's only Jev name there and pinned TypeSafe names elsewhere", async () => {
     const { transport, calls } = setup([
-      () => Response.json({ model: 'typesafe-ai/jev-1.13.0', answers: {}, usage: { input_tokens: 1 } }),
+      () => Response.json({ model: 'typesafe-ai/jev', answers: {}, usage: { input_tokens: 1 } }),
     ]);
     const r = await transport.send(body, { deadline: 10_000, searchId: 's' });
-    expect(JSON.parse(String(calls[0]!.init.body)).model).toBe('typesafe-ai/jev-1.13.0');
-    expect(r.ok && r.response.model).toBe('jev-1.13.0'); // the app keeps TypeSafe's name
+    expect(JSON.parse(String(calls[0]!.init.body)).model).toBe('typesafe-ai/jev'); // the gateway has no versions
+    expect(r.ok && r.response.model).toBe('jev'); // honest: the alias answered, not a pinned version
     expect(wireModel('jev-1.13.0', 'direct')).toBe('jev-1.13.0');
+    expect(wireModel('jev-1.13.0', 'ngrok')).toBe('jev-1.13.0');
   });
 
   it("reads the gateway's error code (error_type)", async () => {
