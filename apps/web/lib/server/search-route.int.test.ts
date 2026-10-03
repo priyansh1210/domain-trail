@@ -1,6 +1,7 @@
 // Spec 001 tech §11 `search-route.int.test.ts` and `idempotency.int.test.ts` (FR-INT-006, 008, 012; FR-ABU-001,
 // 002, 009, 011) — the route runs against in-memory services and the mock decision model.
 import { parseServerEnv } from '@domains-all/config';
+import type { ResultItem } from '@domains-all/core';
 import { describe, expect, it } from 'vitest';
 import { handleSearch, handleSnapshot } from './search';
 import { buildServices, type Services } from './services';
@@ -39,27 +40,42 @@ async function events(res: Response): Promise<Array<{ event: string; data: unkno
 }
 
 function svc(env: Record<string, string> = {}): Services {
-  return buildServices(parseServerEnv({ RATE_LIMIT_MODE: 'off', ...env }));
+  // Recorded DNS/RDAP/price answers: tests never go online (FR-QA-003).
+  return buildServices(parseServerEnv({ RATE_LIMIT_MODE: 'off', PUBLIC_DATA_MODE: 'fixture', ...env }));
 }
 
+const resultsOf = (ev: Array<{ event: string; data: unknown }>) =>
+  ev.filter((e) => e.event === 'batch').flatMap((e) => (e.data as { results: ResultItem[] }).results);
+const LDH_FQDN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9-]+){1,3}$/;
+
 describe('POST /api/search', () => {
-  it('streams search_created → progress → features → done', async () => {
+  it('streams features, then checked and priced results in sections', async () => {
     const s = svc();
     const res = await handleSearch(post(body()), s);
     expect(res.headers.get('content-type')).toContain('text/event-stream');
     const ev = await events(res);
-    expect(ev.map((e) => e.event)).toEqual([
+    const kinds = ev.map((e) => e.event);
+    expect(kinds.slice(0, 6)).toEqual([
       'search_created',
       'progress',
       'features',
       'progress',
-      'ideas',
-      'done',
+      'progress',
+      'pricing',
     ]);
-    const ideas = (ev[4]!.data as { ideas: Array<{ label: string; tlds: Array<{ tld: string }> }> }).ideas;
-    expect(ideas.length).toBeGreaterThan(5);
-    for (const i of ideas) expect(i.label).toMatch(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/);
-    expect(JSON.stringify(ideas)).not.toMatch(/available/i); // ideas are not checked (constitution P3)
+    expect(kinds).toContain('batch');
+    expect(kinds.at(-1)).toBe('done');
+    const results = resultsOf(ev);
+    expect(results.length).toBeGreaterThan(10);
+    for (const r of results) {
+      expect(r.fqdn).toMatch(LDH_FQDN);
+      expect(r.status).not.toBe('taken'); // taken names are never shown (FR-AVL-001)
+      if (['budget', 'mid', 'premium'].includes(r.section))
+        expect(r.price?.upfrontUsdCents).toBeGreaterThan(0);
+    }
+    const done = ev.at(-1)!.data as { counts: Record<string, number>; sections: Record<string, string[]> };
+    expect(done.counts.budget).toBeGreaterThan(0);
+    expect(done.sections.budget!.length).toBe(done.counts.budget);
     const created = ev[0]!.data as { ref: string; cached: boolean };
     expect(created.cached).toBe(false);
     expect((ev[2]!.data as { geo: { value: string } }).geo.value).toBe('country_in');
@@ -79,9 +95,15 @@ describe('POST /api/search', () => {
     const s = svc();
     const first = await events(await handleSearch(post(body()), s));
     const second = await events(await handleSearch(post(body()), s));
-    expect(second.map((e) => e.event)).toEqual(['search_created', 'features', 'ideas', 'done']);
-    expect((second[2]!.data as { ideas: unknown[] }).ideas).toEqual(
-      (first[4]!.data as { ideas: unknown[] }).ideas,
+    expect(second.map((e) => e.event)).toEqual(['search_created', 'features', 'pricing', 'batch', 'done']);
+    expect(
+      resultsOf(second)
+        .map((r) => r.fqdn)
+        .sort(),
+    ).toEqual(
+      resultsOf(first)
+        .map((r) => r.fqdn)
+        .sort(),
     );
     expect((second[0]!.data as { cached: boolean; searchId: string }).cached).toBe(true);
     expect((second[0]!.data as { searchId: string }).searchId).toBe(
@@ -98,10 +120,14 @@ describe('POST /api/search', () => {
     const json = (await snap.json()) as {
       status: string;
       profile: { industry: { value: string } };
-      results: unknown[];
+      results: ResultItem[];
+      sections: Record<string, string[]>;
+      pricing: { fx: { rates: Record<string, number> } };
     };
-    expect(json).toMatchObject({ status: 'done', results: [] });
-    expect((json as unknown as { ideas: unknown[] }).ideas.length).toBeGreaterThan(5);
+    expect(json.status).toBe('done');
+    expect(json.results.length).toBe(resultsOf(ev).length);
+    expect(json.sections.budget!.length).toBeGreaterThan(0);
+    expect(json.pricing.fx.rates.USD).toBe(1);
     expect(json.profile.industry.value).toBe('food__bakery');
     expect(JSON.stringify(json)).not.toContain('sourdough bread');
     expect((await handleSnapshot(`${ref.slice(0, 36)}.deadbeef`, s)).status).toBe(404);
@@ -174,15 +200,17 @@ describe('POST /api/search', () => {
       throw new Error('db down');
     };
     const ev = await events(await handleSearch(post(body()), { ...s, store: broken }));
-    expect(ev.map((e) => e.event)).toEqual([
+    const kinds = ev.map((e) => e.event);
+    expect(kinds.slice(0, 7)).toEqual([
       'search_created',
       'notice',
       'progress',
       'features',
       'progress',
-      'ideas',
-      'done',
+      'progress',
+      'pricing',
     ]);
+    expect(kinds.at(-1)).toBe('done');
     expect((ev[1]!.data as { code: string }).code).toBe('not_saved');
   });
 });

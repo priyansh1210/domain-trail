@@ -1,6 +1,7 @@
 // Search persistence (spec 012 tech §3: `searches`, `result_cache`; spec 002: `jev_usage`). Never stores the
 // description (FR-DATA-002, FR-INT-012). Mock mode and missing configuration use the in-memory store.
-import type { Idea, SiteProfile, WordCache } from '@domains-all/core';
+import type { AvailabilityCache, CheckResult } from '@domains-all/availability';
+import type { ResultItem, Section, SiteProfile, WordCache } from '@domains-all/core';
 import type { UsageStore } from '@domains-all/jev';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
@@ -38,23 +39,28 @@ export interface SearchStore {
   getSearch(id: string, now?: Date): Promise<SearchRecord | null>;
   cacheLookup(cacheKey: string, now?: Date): Promise<string | null>;
   cachePut(cacheKey: string, searchId: string, expiresAt: string): Promise<void>;
-  /** M3 preview: ranked name ideas, kept as `search_results` rows (section 'unpriced', status 'idea'). */
-  saveIdeas(id: string, ideas: readonly Idea[]): Promise<void>;
-  getIdeas(id: string): Promise<Idea[]>;
+  /** Results with their final order per section (`search_results`, spec 012). */
+  saveResults(id: string, r: StoredResults): Promise<void>;
+  getResults(id: string): Promise<StoredResults>;
+}
+
+export interface StoredResults {
+  results: ResultItem[];
+  sections: Partial<Record<Section, string[]>>;
 }
 
 export class MemorySearchStore implements SearchStore {
   readonly kind = 'memory' as const;
   readonly searches = new Map<string, SearchRecord & { cacheKey: string; prefs: unknown }>();
   readonly cache = new Map<string, { searchId: string; expiresAt: string }>();
-  readonly ideas = new Map<string, Idea[]>();
+  readonly results = new Map<string, StoredResults>();
 
-  async saveIdeas(id: string, ideas: readonly Idea[]) {
-    this.ideas.set(id, [...ideas]);
+  async saveResults(id: string, r: StoredResults) {
+    this.results.set(id, { results: [...r.results], sections: { ...r.sections } });
   }
 
-  async getIdeas(id: string) {
-    return this.ideas.get(id) ?? [];
+  async getResults(id: string): Promise<StoredResults> {
+    return this.results.get(id) ?? { results: [], sections: {} };
   }
 
   async createSearch(s: {
@@ -208,58 +214,166 @@ export class SupabaseSearchStore implements SearchStore {
     );
   }
 
-  saveIdeas(id: string, ideas: readonly Idea[]) {
-    return saveIdeasRows(this.sb, id, ideas);
+  saveResults(id: string, r: StoredResults) {
+    return saveResultRows(this.sb, id, r);
   }
 
-  getIdeas(id: string) {
-    return getIdeasRows(this.sb, id);
+  getResults(id: string) {
+    return getResultRows(this.sb, id);
   }
 }
 
-/** Ideas as `search_results` rows (spec 012): no personal data, best extension in `fqdn`, the rest in `signals`. */
-export async function saveIdeasRows(sb: SupabaseClient, id: string, ideas: readonly Idea[]) {
-  if (ideas.length === 0) return;
+/** One `search_results` row per result: rank = position in its section's final order (9999 = beyond the lists). */
+export async function saveResultRows(sb: SupabaseClient, id: string, r: StoredResults) {
+  if (r.results.length === 0) return;
+  const rankOf = new Map<string, number>();
+  for (const list of Object.values(r.sections)) list?.forEach((fqdn, i) => rankOf.set(fqdn, i));
   check(
     await sb.from('search_results').upsert(
-      ideas.map((idea, rank) => ({
+      r.results.map((item) => ({
         search_id: id,
-        fqdn: `${idea.label}.${idea.tlds[0]?.tld ?? 'com'}`,
-        section: 'unpriced',
-        rank,
-        score: idea.score,
-        status: 'idea',
-        signals: { tlds: idea.tlds, source: idea.source },
-        reasons: idea.reasons,
-        strategy: idea.strategy,
+        fqdn: item.fqdn,
+        section: item.section,
+        rank: rankOf.get(item.fqdn) ?? 9999,
+        score: item.score,
+        status: item.status,
+        upfront_cents: item.price?.upfrontUsdCents ?? null,
+        renew_cents: item.price?.renewUsdCents ?? null,
+        price_source: item.price?.source ?? null,
+        signals: item,
+        reasons: item.reasons,
+        strategy: item.strategy,
       })),
     ),
   );
 }
 
-export async function getIdeasRows(sb: SupabaseClient, id: string): Promise<Idea[]> {
+export async function getResultRows(sb: SupabaseClient, id: string): Promise<StoredResults> {
   const rows = check(
-    await sb
-      .from('search_results')
-      .select('fqdn,score,signals,reasons,strategy')
-      .eq('search_id', id)
-      .eq('status', 'idea')
-      .order('rank'),
-  ) as Array<{
+    await sb.from('search_results').select('fqdn,section,rank,signals').eq('search_id', id).order('rank'),
+  ) as Array<{ fqdn: string; section: Section; rank: number; signals: ResultItem }> | null;
+  const results = (rows ?? []).map((row) => row.signals);
+  const sections: Partial<Record<Section, string[]>> = {};
+  for (const row of rows ?? []) if (row.rank < 9999) (sections[row.section] ??= []).push(row.fqdn);
+  return { results, sections };
+}
+
+/** Shared availability answers in `domain_checks` (spec 005 tech §3, FR-AVL-009). Extensions are added to `tlds`
+ *  on first use until the daily registry job (M5) fills that table. */
+export class SupabaseAvailabilityCache implements AvailabilityCache {
+  private readonly knownTlds = new Set<string>();
+  constructor(private readonly sb: SupabaseClient) {}
+
+  async getMany(fqdns: readonly string[], now: number) {
+    const out = new Map<string, CheckResult>();
+    if (fqdns.length === 0) return out;
+    const rows = check(
+      await this.sb
+        .from('domain_checks')
+        .select(
+          'fqdn,tld,status,method,premium_price_cents,premium_currency,premium_source,checked_at,expires_at',
+        )
+        .in('fqdn', [...fqdns])
+        .gt('expires_at', new Date(now).toISOString()),
+    ) as Array<{
+      fqdn: string;
+      tld: string;
+      status: CheckResult['status'];
+      method: Exclude<CheckResult['method'], 'cache'>;
+      premium_price_cents: number | null;
+      premium_currency: string | null;
+      premium_source: string | null;
+      checked_at: string;
+      expires_at: string;
+    }> | null;
+    for (const r of rows ?? [])
+      out.set(r.fqdn, {
+        fqdn: r.fqdn,
+        tld: r.tld,
+        status: r.status,
+        method: r.method,
+        checkedAt: r.checked_at,
+        expiresAt: r.expires_at,
+        ...(r.premium_price_cents !== null
+          ? {
+              premium: {
+                priceCents: r.premium_price_cents,
+                currency: r.premium_currency ?? 'USD',
+                source: r.premium_source ?? '',
+              },
+            }
+          : {}),
+      });
+    return out;
+  }
+
+  async putMany(results: readonly CheckResult[]) {
+    if (results.length === 0) return;
+    const fresh = [...new Set(results.map((r) => r.tld))].filter((t) => !this.knownTlds.has(t));
+    if (fresh.length) {
+      check(
+        await this.sb.from('tlds').upsert(
+          fresh.map((tld) => ({
+            tld,
+            type: tld.includes('.') ? 'sld' : tld.length === 2 ? 'ccTLD' : 'gTLD',
+          })),
+          { onConflict: 'tld', ignoreDuplicates: true },
+        ),
+      );
+      for (const t of fresh) this.knownTlds.add(t);
+    }
+    check(
+      await this.sb.from('domain_checks').upsert(
+        results.map((r) => ({
+          fqdn: r.fqdn,
+          tld: r.tld,
+          status: r.status,
+          method: r.method === 'cache' ? 'rdap' : r.method,
+          premium_price_cents: r.premium?.priceCents ?? null,
+          premium_currency: r.premium?.currency ?? null,
+          premium_source: r.premium?.source ?? null,
+          drop_window_start: r.dropWindow?.start ?? null,
+          drop_window_end: r.dropWindow?.end ?? null,
+          checked_at: r.checkedAt,
+          expires_at: r.expiresAt,
+        })),
+      ),
+    );
+  }
+}
+
+/** Thumbs up/down per search, name and pseudonymous visitor (spec 008 §5.8, `feedback`). */
+export interface FeedbackStore {
+  vote(f: {
+    searchId: string;
     fqdn: string;
-    score: number;
-    signals: { tlds: Idea['tlds']; source: Idea['source'] };
-    reasons: Idea['reasons'];
-    strategy: string;
-  }> | null;
-  return (rows ?? []).map((r) => ({
-    label: r.fqdn.split('.')[0]!,
-    score: r.score,
-    tlds: r.signals.tlds,
-    source: r.signals.source,
-    reasons: r.reasons,
-    strategy: r.strategy,
-  }));
+    visitorHash: string;
+    vote: 1 | -1;
+    reason?: 'offensive' | 'brand' | 'other';
+  }): Promise<void>;
+}
+
+export class MemoryFeedbackStore implements FeedbackStore {
+  readonly votes = new Map<string, number>();
+  async vote(f: Parameters<FeedbackStore['vote']>[0]) {
+    if (this.votes.size > 50_000) this.votes.clear();
+    this.votes.set(`${f.searchId}|${f.fqdn}|${f.visitorHash}`, f.vote);
+  }
+}
+
+export class SupabaseFeedbackStore implements FeedbackStore {
+  constructor(private readonly sb: SupabaseClient) {}
+  async vote(f: Parameters<FeedbackStore['vote']>[0]) {
+    check(
+      await this.sb.from('feedback').upsert({
+        search_id: f.searchId,
+        fqdn: f.fqdn,
+        visitor_hash: f.visitorHash,
+        vote: f.vote,
+        reason: f.reason ?? null,
+      }),
+    );
+  }
 }
 
 /** Datamuse answers cached 30 days in `word_cache` (spec 004 tech §3, spec 012). */

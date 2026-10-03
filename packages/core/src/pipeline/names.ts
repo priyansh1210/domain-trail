@@ -15,7 +15,7 @@ import { expansionOptions, keepExpansions, relatedWords, type WordCache } from '
 import { extractTerms, keywordOptions, weighTerms } from '../generation/terms';
 import type { Preferences } from '../intake/schema';
 import { rankRound1, rankRound2 } from '../ranking/rounds';
-import { pair, toIdeas, type Idea } from '../ranking/score';
+import { pair, toIdeas, type Idea, type Pair } from '../ranking/score';
 import { buildTldPool } from '../ranking/tld-pool';
 import { brandTokensIn } from '../safety/brand-risk';
 import type { StageUsage } from './s1';
@@ -33,11 +33,17 @@ export interface NamesContext {
   wordCache?: WordCache;
   memo?: AnswerMemo;
   exclude?: ReadonlySet<string>;
+  /** "Find more in this range": picks extensions from the pool whose price is in the chosen band (FR-PRC-009). */
+  bandTlds?: (pool: readonly string[]) => string[];
   now?: () => number;
 }
 
 export interface NamesOutcome {
   ideas: Idea[];
+  /** Ranked name + extension pairs for availability checks (S7). */
+  pairs: Pair[];
+  coreTerms: ReadonlyMap<string, number>;
+  flagsOn: string[];
   lowSupply: boolean;
   usage: StageUsage;
   degraded?: DegradedReason;
@@ -163,11 +169,17 @@ export async function runNames(ctx: NamesContext): Promise<NamesOutcome> {
   usage.requests += r2.usage.requests;
   if (r2.degraded) degraded ??= 'jev_unavailable';
 
-  const pairs = pair(r2.items, r2.tldFit, { preferredTlds: ctx.preferences.preferredTlds });
+  const pairs = pair(r2.items, r2.tldFit, {
+    preferredTlds: ctx.preferences.preferredTlds,
+    bandTlds: ctx.bandTlds?.(pool),
+  });
   const ideas = toIdeas(pairs, { coreTerms: gen.weights, flagsOn, geo: ctx.profile.geo.value });
 
   return {
     ideas,
+    pairs,
+    coreTerms: gen.weights,
+    flagsOn,
     lowSupply: gen.lowSupply,
     usage,
     ...(degraded ? { degraded } : {}),

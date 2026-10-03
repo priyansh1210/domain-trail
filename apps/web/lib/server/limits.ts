@@ -4,7 +4,7 @@ import { rateLimits } from '@domains-all/config';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
-export type Bucket = 'search' | 'search_day';
+export type Bucket = 'search' | 'search_day' | 'recheck' | 'feedback';
 export type Tier = 'anonymous' | 'signedIn';
 export interface LimitResult {
   ok: boolean;
@@ -17,9 +17,13 @@ export interface Limiter {
 const WINDOW_SEC: Record<Bucket, number> = {
   search: rateLimits.search.anonymous.windowSeconds,
   search_day: 86_400,
+  recheck: 60,
+  feedback: 3600,
 };
-/** Limits in half-search units: a full search costs 2. */
+/** Search limits are in half-search units (a full search costs 2); re-checks and feedback count 1 each. */
 export function unitLimit(bucket: Bucket, tier: Tier): number {
+  if (bucket === 'recheck') return rateLimits.recheckPerMinute;
+  if (bucket === 'feedback') return rateLimits.feedbackPerHour;
   return 2 * (bucket === 'search' ? rateLimits.search[tier].limit : rateLimits.searchDay[tier]);
 }
 

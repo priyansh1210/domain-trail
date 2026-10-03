@@ -8,5 +8,7 @@ export * from './features/rules';
 export * from './safety/gate';
 export * from './pipeline/s1';
 export * from './pipeline/names';
+export * from './pipeline/verify';
+export { isWord } from './generation/lexicon';
 export { MemoryWordCache, type WordCache } from './generation/related';
 export type { Idea, Reason } from './ranking/score';
