@@ -197,3 +197,9 @@ Distribution of S per section, exclusion counts (brand/negative), reasons freque
 ## 14. Risks and research links
 - R-02: shard-choice lift vs per-item score quality; if shard probabilities are too peaked, switch round 1 to per-item `score` in batches (more tokens).
 - R-01: questions per request (round 2 needs 136 questions → 3 requests at ≤ 50).
+
+## 15. Implementation notes (M4, 2026-10-04)
+- The price term P, the availability penalties (likely available −0.10, unknown −0.20), the restricted-extension and
+  renewal-warning penalties (−0.05 each) and the `value` reason are applied in `packages/core/src/pipeline/verify.ts`
+  after availability and price are known. Section order and variety use `orderSection` (≤ 3 per name, ≤ 40 % per style
+  on the first page of 20, topped up in score order when too few styles exist).

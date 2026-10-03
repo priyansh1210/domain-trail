@@ -8,7 +8,11 @@ import type { FreeProvider } from './providers';
 export type FreeStatus = 'appears_free' | 'taken' | 'not_verifiable';
 
 /** Parses a repository tree (`domains/<label>.json`) or a JS object of `"label": "target"` pairs. */
-export function parseTakenList(format: 'tree' | 'js_keys', body: string, cfg: { prefix?: string; ext?: string } = {}): Set<string> {
+export function parseTakenList(
+  format: 'tree' | 'js_keys',
+  body: string,
+  cfg: { prefix?: string; ext?: string } = {},
+): Set<string> {
   const out = new Set<string>();
   if (format === 'tree') {
     const json = JSON.parse(body) as { tree?: Array<{ path?: unknown }> };
@@ -27,7 +31,10 @@ export function parseTakenList(format: 'tree' | 'js_keys', body: string, cfg: { 
 
 export function createFreeChecker(opts: { live: boolean; fetchFn?: typeof fetch; now?: () => number }) {
   const now = opts.now ?? Date.now;
-  const lists = new Map<string, { taken?: Set<string>; at: number; loading?: Promise<Set<string> | undefined> }>();
+  const lists = new Map<
+    string,
+    { taken?: Set<string>; at: number; loading?: Promise<Set<string> | undefined> }
+  >();
   const maxAge = availability.directoryRefreshHours * 3600_000;
 
   async function takenList(p: FreeProvider): Promise<Set<string> | undefined> {

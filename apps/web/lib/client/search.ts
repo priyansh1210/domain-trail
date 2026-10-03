@@ -1,27 +1,45 @@
 'use client';
 // Client side of the search stream (spec 001 tech §1 step 8, spec 009 tech §4–5). The description stays in this
 // browser tab's sessionStorage only (FR-INT-012); the server never stores it.
-import type { Idea, Preferences, SiteProfile } from '@domains-all/core/client';
+import type { Preferences, ResultItem, Section, SiteProfile } from '@domains-all/core/client';
+import type { FxTable } from '@domains-all/pricing/client';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { create } from 'zustand';
 
 export type Phase =
   'starting' | 'features' | 'done' | 'needs_detail' | 'refused' | 'error' | 'expired' | 'not_found';
 
+export type Stage = 'features' | 'names' | 'availability' | 'done';
+
 export interface SearchInput {
   description: string;
   preferences: Preferences;
 }
 
+export interface PricingInfo {
+  fx: FxTable;
+  pricesAt: string;
+  source: string;
+  stale?: boolean;
+}
+
+export type NoticeCode = 'avl_paused' | 'stale_prices' | 'low_supply' | 'partial';
+
 export interface SearchView {
   phase: Phase;
+  stage?: Stage;
   profile?: SiteProfile;
   degraded?: 'jev_unavailable' | 'budget';
   hints?: string[];
   notSaved?: boolean;
   cached?: boolean;
-  ideas?: Idea[]; // M3 preview: not checked for availability
-  lowSupply?: boolean;
+  results?: Record<string, ResultItem>;
+  /** Final order per section, known when the stream is done. */
+  sections?: Partial<Record<Section, string[]>>;
+  pricing?: PricingInfo;
+  notices?: NoticeCode[];
+  /** "Find more" is running for these bands. */
+  findingMore?: boolean;
 }
 
 export type StartError =
@@ -34,12 +52,18 @@ export type StartError =
 interface Store {
   byRef: Record<string, SearchView>;
   set(ref: string, patch: Partial<SearchView>): void;
+  update(ref: string, fn: (v: SearchView) => Partial<SearchView>): void;
 }
 
 export const useSearchStore = create<Store>((set) => ({
   byRef: {},
   set: (ref, patch) =>
     set((s) => ({ byRef: { ...s.byRef, [ref]: { ...(s.byRef[ref] ?? { phase: 'starting' }), ...patch } } })),
+  update: (ref, fn) =>
+    set((s) => {
+      const cur = s.byRef[ref] ?? { phase: 'starting' as const };
+      return { byRef: { ...s.byRef, [ref]: { ...cur, ...fn(cur) } } };
+    }),
 }));
 
 const SESSION_PREFIX = 'search:';
@@ -62,6 +86,81 @@ export function recallInput(ref: string): SearchInput | null {
 }
 
 class StopError extends Error {}
+
+function addNotice(v: SearchView, code: NoticeCode): Partial<SearchView> {
+  return { notices: [...new Set([...(v.notices ?? []), code])] };
+}
+
+/** Applies one stream event to the view (shared by the first search and "find more"). */
+function applyEvent(
+  ref: string,
+  event: string,
+  data: Record<string, unknown>,
+  opts: { more?: boolean } = {},
+) {
+  const { set, update } = useSearchStore.getState();
+  switch (event) {
+    case 'features':
+      set(ref, { phase: 'features', stage: 'names', profile: data as unknown as SiteProfile });
+      break;
+    case 'progress':
+      if (data.stage === 'availability') set(ref, { stage: 'availability' });
+      break;
+    case 'pricing':
+      set(ref, { pricing: data as unknown as PricingInfo });
+      break;
+    case 'batch':
+      update(ref, (v) => {
+        const results = { ...(v.results ?? {}) };
+        for (const r of data.results as ResultItem[]) results[r.fqdn] = r;
+        return { results };
+      });
+      break;
+    case 'update':
+      update(ref, (v) => {
+        const results = { ...(v.results ?? {}) };
+        const fqdn = String(data.fqdn);
+        if (data.status === 'taken' || data.status === 'dropping_soon') delete results[fqdn];
+        else if (results[fqdn])
+          results[fqdn] = {
+            ...results[fqdn],
+            status: data.status as ResultItem['status'],
+            checkedAt: String(data.checkedAt),
+          };
+        return { results };
+      });
+      break;
+    case 'degraded':
+      set(ref, { degraded: data.reason as SearchView['degraded'] });
+      break;
+    case 'notice':
+      if (data.code === 'not_saved') set(ref, { notSaved: true });
+      else update(ref, (v) => addNotice(v, data.code as NoticeCode));
+      break;
+    case 'needs_detail':
+      set(ref, { phase: 'needs_detail', hints: data.hints as string[] });
+      break;
+    case 'refused':
+      set(ref, { phase: 'refused' });
+      break;
+    case 'done': {
+      const sections = (data.sections ?? {}) as Partial<Record<Section, string[]>>;
+      update(ref, (v) => {
+        if (!opts.more) return { phase: 'done', stage: 'done', sections };
+        // "Find more": new names go after the ones already shown, in their own best-first order.
+        const merged: Partial<Record<Section, string[]>> = { ...(v.sections ?? {}) };
+        for (const [s, list] of Object.entries(sections) as Array<[Section, string[]]>)
+          merged[s] = [...(merged[s] ?? []), ...list.filter((f) => !(merged[s] ?? []).includes(f))];
+        return { sections: merged, findingMore: false };
+      });
+      break;
+    }
+    case 'error':
+      if (opts.more) set(ref, { findingMore: false });
+      else set(ref, { phase: 'error' });
+      break;
+  }
+}
 
 /**
  * Starts a search. Resolves with the search reference once the server has created it (the caller then navigates
@@ -109,37 +208,11 @@ export function startSearch(
         if (ev.event === 'search_created') {
           ref = String(data.ref);
           rememberInput(ref, input);
-          set(ref, { phase: 'starting', cached: Boolean(data.cached) });
+          set(ref, { phase: 'starting', stage: 'features', cached: Boolean(data.cached), results: {} });
           settle({ ref });
           return;
         }
-        if (!ref) return;
-        switch (ev.event) {
-          case 'features':
-            set(ref, { phase: 'features', profile: data as unknown as SiteProfile });
-            break;
-          case 'ideas':
-            set(ref, { ideas: (data.ideas as Idea[]) ?? [], lowSupply: Boolean(data.lowSupply) });
-            break;
-          case 'degraded':
-            set(ref, { degraded: data.reason as SearchView['degraded'] });
-            break;
-          case 'notice':
-            if (data.code === 'not_saved') set(ref, { notSaved: true });
-            break;
-          case 'needs_detail':
-            set(ref, { phase: 'needs_detail', hints: data.hints as string[] });
-            break;
-          case 'refused':
-            set(ref, { phase: 'refused' });
-            break;
-          case 'done':
-            set(ref, { phase: 'done' });
-            break;
-          case 'error':
-            set(ref, { phase: 'error' });
-            break;
-        }
+        if (ref) applyEvent(ref, ev.event, data);
       },
       onclose() {
         if (!ref) settle({ error: { kind: 'generic' } });
@@ -153,6 +226,87 @@ export function startSearch(
       },
     }).catch(() => undefined);
   });
+}
+
+/** "Find more in this range" (FR-PRC-009): new names in the band, excluding everything already shown. */
+export async function findMore(
+  ref: string,
+  band: { minCents: number; maxCents: number | null; basis: 'upfront' | 'renewal' },
+): Promise<'ok' | 'no_description' | 'limited' | 'error'> {
+  const input = recallInput(ref);
+  if (!input) return 'no_description';
+  const { set, byRef } = useSearchStore.getState();
+  const exclude = Object.keys(byRef[ref]?.results ?? {}).slice(0, 500);
+  set(ref, { findingMore: true });
+  let outcome: 'ok' | 'limited' | 'error' = 'ok';
+  await fetchEventSource(`/api/search/${encodeURIComponent(ref)}/more`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      ...input,
+      turnstileToken: 'none',
+      priceMinCents: band.minCents,
+      priceMaxCents: band.maxCents,
+      basis: band.basis,
+      exclude,
+    }),
+    openWhenHidden: true,
+    async onopen(res) {
+      if (res.ok && res.headers.get('content-type')?.includes('text/event-stream')) return;
+      outcome = res.status === 429 ? 'limited' : 'error';
+      throw new StopError();
+    },
+    onmessage(ev) {
+      applyEvent(ref, ev.event, ev.data ? (JSON.parse(ev.data) as Record<string, unknown>) : {}, {
+        more: true,
+      });
+    },
+    onerror(err) {
+      if (!(err instanceof StopError)) outcome = 'error';
+      throw err;
+    },
+  }).catch(() => undefined);
+  if (outcome !== 'ok') set(ref, { findingMore: false });
+  return outcome;
+}
+
+/** Fresh check of one name (FR-AVL-014). Taken names leave the list; others get the new status and time. */
+export async function recheck(ref: string, fqdn: string): Promise<'ok' | 'limited' | 'error'> {
+  const res = await fetch(`/api/domains/${encodeURIComponent(fqdn)}/recheck`, { method: 'POST' }).catch(
+    () => null,
+  );
+  if (!res) return 'error';
+  if (res.status === 429) return 'limited';
+  if (!res.ok) return 'error';
+  const body = (await res.json()) as {
+    status: ResultItem['status'];
+    checkedAt: string;
+    price?: ResultItem['price'];
+  };
+  useSearchStore.getState().update(ref, (v) => {
+    const results = { ...(v.results ?? {}) };
+    const cur = results[fqdn];
+    if (!cur) return {};
+    if (body.status === 'taken' || body.status === 'dropping_soon') delete results[fqdn];
+    else
+      results[fqdn] = {
+        ...cur,
+        status: body.status,
+        checkedAt: body.checkedAt,
+        ...(body.price ? { price: body.price } : {}),
+      };
+    return { results };
+  });
+  return 'ok';
+}
+
+/** Thumbs up/down (FR-RANK-012); failures are silent — feedback is optional. */
+export async function sendFeedback(ref: string, fqdn: string, vote: 1 | -1): Promise<void> {
+  await fetch('/api/feedback', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ searchRef: ref, fqdn, vote }),
+  }).catch(() => undefined);
 }
 
 /** Shared links and reloads without the description: load the stored snapshot. */
@@ -169,7 +323,9 @@ export async function loadSnapshot(ref: string): Promise<void> {
     status: string;
     profile: SiteProfile | null;
     degraded: boolean;
-    ideas?: Idea[];
+    results?: ResultItem[];
+    sections?: Partial<Record<Section, string[]>>;
+    pricing?: PricingInfo;
   };
   const phase: Phase =
     snap.status === 'done'
@@ -183,8 +339,11 @@ export async function loadSnapshot(ref: string): Promise<void> {
             : 'starting';
   set(ref, {
     phase,
+    stage: phase === 'done' ? 'done' : undefined,
     profile: snap.profile ?? undefined,
-    ...(snap.ideas?.length ? { ideas: snap.ideas } : {}),
+    results: Object.fromEntries((snap.results ?? []).map((r) => [r.fqdn, r])),
+    sections: snap.sections ?? {},
+    ...(snap.pricing ? { pricing: snap.pricing } : {}),
     ...(snap.degraded ? { degraded: 'jev_unavailable' } : {}),
   });
 }

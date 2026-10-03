@@ -85,12 +85,17 @@ describe('feedback', () => {
     const s = svc();
     const { ref } = await search(s);
     const res = await handleFeedback(
-      req('http://localhost/api/feedback', { ref, fqdn: 'crumbly.com', vote: 1 }),
+      req('http://localhost/api/feedback', { searchRef: ref, fqdn: 'crumbly.com', vote: 1 }),
       s,
     );
-    expect(res.status).toBe(204);
+    expect(res.status).toBe(202);
     await handleFeedback(
-      req('http://localhost/api/feedback', { ref, fqdn: 'crumbly.com', vote: -1, reason: 'brand' }),
+      req('http://localhost/api/feedback', {
+        searchRef: ref,
+        fqdn: 'crumbly.com',
+        vote: -1,
+        reason: 'brand',
+      }),
       s,
     );
     const votes = (s.feedback as MemoryFeedbackStore).votes;
@@ -102,11 +107,11 @@ describe('feedback', () => {
   it('rejects forged links and bad votes', async () => {
     const s = svc();
     expect(
-      (await handleFeedback(req('http://x/', { ref: 'x'.repeat(40), fqdn: 'crumbly.com', vote: 1 }), s))
+      (await handleFeedback(req('http://x/', { searchRef: 'x'.repeat(40), fqdn: 'crumbly.com', vote: 1 }), s))
         .status,
     ).toBe(404);
     expect(
-      (await handleFeedback(req('http://x/', { ref: 'x'.repeat(40), fqdn: 'crumbly.com', vote: 5 }), s))
+      (await handleFeedback(req('http://x/', { searchRef: 'x'.repeat(40), fqdn: 'crumbly.com', vote: 5 }), s))
         .status,
     ).toBe(400);
   });

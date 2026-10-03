@@ -182,3 +182,12 @@ Daily provider health table on `/status` (internal view), free-result click-thro
 ## 14. Risks and research links
 - R-08: current status, terms and permitted check methods for every provider.
 - Risk: providers close or change rules → daily health checks + quarterly human review.
+
+## 15. Implementation notes (M4, 2026-10-04)
+- Check methods follow research R-08: DNS answers **every** name under vercel.app, netlify.app, github.io, is-a.dev and
+  js.org, so DNS cannot check them. **is-a.dev** and **js.org** use their public GitHub lists (repository tree /
+  `cnames_active.js`), fetched by the server at most every 12 hours (the M5 job will move this to
+  `free_provider_taken`); **pages.dev** uses an A-record lookup; **eu.org, pp.ua, dpdns.org** an NS lookup;
+  **vercel.app, netlify.app, github.io** are "not verifiable".
+- DigitalPlat's **us.kg** is suspended (since 2024) and left out; its active **dpdns.org** suffix is listed.
+- The provider list is `packages/free-domains/data/providers.json` (seed for `free_providers`).

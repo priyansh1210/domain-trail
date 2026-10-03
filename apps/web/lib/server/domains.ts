@@ -51,7 +51,9 @@ export async function handleRecheck(req: Request, rawFqdn: string, svc: Services
   return json(200, {
     fqdn,
     status: r.status,
+    method: r.method,
     checkedAt: r.checkedAt,
+    expiresAt: r.expiresAt,
     ...(priced?.priced
       ? {
           price: {
@@ -71,7 +73,7 @@ export async function handleRecheck(req: Request, rawFqdn: string, svc: Services
 }
 
 const FeedbackSchema = z.object({
-  ref: z.string().check(z.minLength(10), z.maxLength(200)),
+  searchRef: z.string().check(z.minLength(10), z.maxLength(200)),
   fqdn: z.string().check(z.regex(FQDN)),
   vote: z.union([z.literal(1), z.literal(-1)]),
   reason: z.optional(z.enum(['offensive', 'brand', 'other'])),
@@ -94,7 +96,7 @@ export async function handleFeedback(req: Request, svc: Services): Promise<Respo
   } catch {
     return json(503, { error: 'not_configured' });
   }
-  const searchId = parseSearchRef(parsed.data.ref, secrets.searchLink);
+  const searchId = parseSearchRef(parsed.data.searchRef, secrets.searchLink);
   if (!searchId) return json(404, { error: 'not_found' });
   const blocked = await limited(req, svc, 'feedback');
   if (blocked) return blocked;
@@ -114,5 +116,5 @@ export async function handleFeedback(req: Request, svc: Services): Promise<Respo
   } catch (e) {
     log.warn({ event: 'feedback.not_saved', error: (e as Error).message });
   }
-  return new Response(null, { status: 204, headers: { 'cache-control': 'no-store' } });
+  return new Response(null, { status: 202, headers: { 'cache-control': 'no-store' } });
 }

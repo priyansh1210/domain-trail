@@ -1,13 +1,34 @@
 'use client';
-// Results page shell for milestone M2 (spec 009 US-1, US-5; spec 003 US-1, US-3; spec 001 US-4): progress, the
-// detected-feature chips, and the "add detail" / refusal / degraded messages. Names arrive in later milestones.
+// Results page (spec 009 US-1…US-6; spec 006 US-2…US-6; spec 003 US-1, US-3; spec 001 US-4): progress, detected-
+// feature chips, the price filter, sections with checked and priced names, banners and the disclaimer.
+import type { Section } from '@domains-all/core/client';
+import type { FxTable } from '@domains-all/pricing/client';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
-import { loadSnapshot, recallInput, startSearch, useSearchStore, type SearchView } from '@/lib/client/search';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PriceFilter } from '@/components/results/price-filter';
+import { bandFor, Sections } from '@/components/results/sections';
+import {
+  ago,
+  DEFAULT_FILTERS,
+  defaultCurrency,
+  type Filters,
+  filtersFromParams,
+  paramsFromFilters,
+} from '@/lib/client/results';
+import {
+  findMore,
+  loadSnapshot,
+  recallInput,
+  startSearch,
+  useSearchStore,
+  type SearchView,
+} from '@/lib/client/search';
 import { t } from '@/lib/i18n';
 import { profileChips } from '@/lib/labels';
-import { reasonText } from '@/lib/reasons';
-import { useRouter } from 'next/navigation';
+
+const USD_ONLY: FxTable = { base: 'USD', asOf: '', rates: { USD: 1 } };
+const CURRENCY_KEY = 'display-currency';
 
 function Banner({ tone, children }: { tone: 'info' | 'warn' | 'danger'; children: React.ReactNode }) {
   const color = tone === 'danger' ? 'var(--danger)' : tone === 'warn' ? 'var(--warn)' : 'var(--accent)';
@@ -23,26 +44,29 @@ function Banner({ tone, children }: { tone: 'info' | 'warn' | 'danger'; children
 }
 
 function Stages({ view }: { view: SearchView }) {
-  const featuresDone = Boolean(view.profile);
-  const namesDone = view.ideas !== undefined;
+  const order = ['features', 'names', 'availability', 'done'] as const;
+  const at = order.indexOf(view.stage ?? 'features');
   const stages = [
-    { key: 'stageFeatures', state: featuresDone ? 'done' : 'active' },
-    { key: 'stageNames', state: namesDone ? 'done' : featuresDone ? 'active' : 'later' },
-    { key: 'stageAvailability', state: 'later' },
-    { key: 'stagePricing', state: 'later' },
+    { key: 'stageFeatures', i: 0 },
+    { key: 'stageNames', i: 1 },
+    { key: 'stageAvailability', i: 2 },
+    { key: 'stagePricing', i: 2 },
   ];
   return (
     <ol className="flex flex-wrap gap-x-6 gap-y-2 text-sm" aria-label="Progress">
-      {stages.map((s) => (
-        <li
-          key={s.key}
-          className={s.state === 'later' ? 'text-[var(--muted)]' : 'font-medium'}
-          aria-current={s.state === 'active' ? 'step' : undefined}
-        >
-          <span aria-hidden="true">{s.state === 'done' ? '✓ ' : s.state === 'active' ? '… ' : '○ '}</span>
-          {t(`results.${s.key}`)}
-        </li>
-      ))}
+      {stages.map((s) => {
+        const state = at > s.i || at === 3 ? 'done' : at === s.i ? 'active' : 'later';
+        return (
+          <li
+            key={s.key}
+            className={state === 'later' ? 'text-[var(--muted)]' : 'font-medium'}
+            aria-current={state === 'active' ? 'step' : undefined}
+          >
+            <span aria-hidden="true">{state === 'done' ? '✓ ' : state === 'active' ? '… ' : '○ '}</span>
+            {t(`results.${s.key}`)}
+          </li>
+        );
+      })}
     </ol>
   );
 }
@@ -82,51 +106,92 @@ function Chips({ view }: { view: SearchView }) {
   );
 }
 
-function Ideas({ view }: { view: SearchView }) {
-  if (!view.profile) return null;
-  if (view.ideas === undefined) {
-    return (
-      <ul className="flex flex-col gap-2" aria-hidden="true">
-        {Array.from({ length: 5 }, (_, i) => (
-          <li key={i} className="h-16 animate-pulse rounded-lg bg-[var(--surface)]" />
-        ))}
-      </ul>
-    );
-  }
-  if (view.ideas.length === 0) return <p className="text-sm text-[var(--muted)]">{t('results.noIdeas')}</p>;
-  return (
-    <ol className="flex flex-col gap-2" data-testid="name-ideas">
-      {view.ideas.map((idea) => (
-        <li key={idea.label} className="rounded-lg border border-[var(--border)] p-3">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="text-lg font-semibold break-all">{idea.label}</span>
-            <span className="sr-only">{t('results.suggestedExtensions')}:</span>
-            <span className="flex flex-wrap gap-1 text-sm text-[var(--muted)]">
-              {idea.tlds.map((x) => (
-                <span key={x.tld} className="rounded border border-[var(--border)] px-1.5">
-                  .{x.tld}
-                </span>
-              ))}
-            </span>
-          </div>
-          {idea.reasons.length > 0 && (
-            <ul className="mt-1 flex flex-wrap gap-x-4 text-sm text-[var(--muted)]">
-              {idea.reasons.map((r) => (
-                <li key={r.id}>{reasonText(r)}</li>
-              ))}
-            </ul>
-          )}
-        </li>
-      ))}
-    </ol>
-  );
+/** Polite announcements, at most every 5 seconds (spec 009 US-5). */
+function useAnnouncer(view: SearchView | undefined): string {
+  const [text, setText] = useState('');
+  const announced = useRef(0);
+  const last = useRef(0);
+  const count = Object.keys(view?.results ?? {}).length;
+  const done = view?.stage === 'done';
+  useEffect(() => {
+    if (view?.profile && announced.current === 0 && count === 0)
+      setText(t('results.announceFeatures', { count: profileChips(view.profile).length }));
+  }, [view?.profile, count]);
+  useEffect(() => {
+    const now = Date.now();
+    if (done) {
+      setText(t('results.announceDone', { count }));
+      announced.current = count;
+      return;
+    }
+    if (count > announced.current && now - last.current >= 5000) {
+      setText(t('results.announceResults', { count: count - announced.current }));
+      announced.current = count;
+      last.current = now;
+    }
+  }, [count, done]);
+  return text;
 }
 
 export function ResultsView({ searchRef }: { searchRef: string }) {
   const router = useRouter();
   const view = useSearchStore((s) => s.byRef[searchRef]);
-  const [announce, setAnnounce] = useState('');
   const requested = useRef(false);
+  const announce = useAnnouncer(view);
+
+  // Filters live in the page address so links and reloads keep them (FR-PRC-007).
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [tab, setTab] = useState<Section>('budget');
+  const [currency, setCurrency] = useState('USD');
+  const [findMoreNote, setFindMoreNote] = useState('');
+  const urlLoaded = useRef(false);
+  const fx = view?.pricing?.fx ?? USD_ONLY;
+
+  useEffect(() => {
+    const parsed = filtersFromParams(new URLSearchParams(window.location.search));
+    const { cur, tab: urlTab, ...f } = parsed;
+    setFilters(f);
+    if (urlTab) setTab(urlTab);
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem(CURRENCY_KEY);
+    } catch {
+      // storage blocked: default below
+    }
+    if (cur ?? stored) setCurrency((cur ?? stored)!);
+    urlLoaded.current = true;
+  }, []);
+
+  // Default currency from the browser's region once rates are known (FR-PRC-010).
+  useEffect(() => {
+    if (!view?.pricing) return;
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem(CURRENCY_KEY);
+    } catch {
+      // ignore
+    }
+    if (!new URLSearchParams(window.location.search).get('cur') && !stored)
+      setCurrency(defaultCurrency(navigator.languages ?? [navigator.language], view.pricing.fx.rates));
+  }, [view?.pricing]);
+
+  useEffect(() => {
+    if (!urlLoaded.current) return;
+    const timer = setTimeout(() => {
+      const qs = paramsFromFilters({ ...filters, cur: currency, tab });
+      window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filters, currency, tab]);
+
+  const chooseCurrency = useCallback((c: string) => {
+    setCurrency(c);
+    try {
+      localStorage.setItem(CURRENCY_KEY, c);
+    } catch {
+      // remembered for this page only
+    }
+  }, []);
 
   // Reload or shared link: re-run from this tab's session if we still have the description, else load the snapshot.
   useEffect(() => {
@@ -141,15 +206,6 @@ export function ResultsView({ searchRef }: { searchRef: string }) {
     } else void loadSnapshot(searchRef);
   }, [view, searchRef, router]);
 
-  useEffect(() => {
-    if (view?.profile)
-      setAnnounce(t('results.announceFeatures', { count: profileChips(view.profile).length }));
-  }, [view?.profile]);
-
-  useEffect(() => {
-    if (view?.ideas?.length) setAnnounce(t('results.announceIdeas', { count: view.ideas.length }));
-  }, [view?.ideas]);
-
   async function searchAnyway() {
     const input = recallInput(searchRef);
     if (!input) return;
@@ -160,7 +216,21 @@ export function ResultsView({ searchRef }: { searchRef: string }) {
     if ('ref' in r) router.push(`/s/${r.ref}`);
   }
 
+  async function onFindMore(section: Section) {
+    setFindMoreNote('');
+    const outcome = await findMore(searchRef, { ...bandFor(section, filters), basis: filters.basis });
+    if (outcome === 'no_description') setFindMoreNote(t('results.findMoreUnavailable'));
+    else if (outcome === 'limited') setFindMoreNote(t('results.findMoreLimited'));
+    else if (outcome === 'error') setFindMoreNote(t('form.errorGeneric'));
+  }
+
   const phase = view?.phase ?? 'starting';
+  const pricesAgo = useMemo(
+    () => (view?.pricing?.pricesAt ? ago(view.pricing.pricesAt) : undefined),
+    [view?.pricing?.pricesAt],
+  );
+  const notices = view?.notices ?? [];
+  const showResults = Boolean(view?.profile) && view?.stage !== 'names' && view?.stage !== 'features';
 
   return (
     <div className="flex flex-col gap-6">
@@ -184,6 +254,9 @@ export function ResultsView({ searchRef }: { searchRef: string }) {
         </Banner>
       )}
       {view?.notSaved && <Banner tone="info">{t('results.notSaved')}</Banner>}
+      {notices.includes('avl_paused') && <Banner tone="warn">{t('results.avlPaused')}</Banner>}
+      {notices.includes('stale_prices') && <Banner tone="warn">{t('results.stalePrices')}</Banner>}
+      {notices.includes('partial') && <Banner tone="warn">{t('results.partial')}</Banner>}
 
       {phase === 'needs_detail' && (
         <section
@@ -226,16 +299,54 @@ export function ResultsView({ searchRef }: { searchRef: string }) {
             </h2>
             <Chips view={view ?? { phase: 'starting' }} />
           </section>
-          {view?.profile && (
-            <section aria-labelledby="ideas-title" className="flex flex-col gap-3">
-              <h2 id="ideas-title" className="text-lg font-semibold">
-                {t('results.ideasTitle')}
-              </h2>
-              <p className="rounded-lg border border-[var(--warn)] p-3 text-sm">{t('results.ideasNote')}</p>
-              {view.lowSupply && <p className="text-sm text-[var(--muted)]">{t('results.lowSupply')}</p>}
-              <Ideas view={view} />
-            </section>
+
+          {view?.profile && !showResults && (
+            <ul className="flex flex-col gap-2" aria-hidden="true">
+              {Array.from({ length: 4 }, (_, i) => (
+                <li key={i} className="h-28 animate-pulse rounded-lg bg-[var(--surface)]" />
+              ))}
+            </ul>
           )}
+
+          {showResults && view && (
+            <>
+              <PriceFilter
+                filters={filters}
+                onChange={setFilters}
+                currency={currency}
+                onCurrency={chooseCurrency}
+                fx={fx}
+                showPremium={false}
+              />
+              {notices.includes('low_supply') && (
+                <p className="text-sm text-[var(--muted)]">{t('results.lowSupply')}</p>
+              )}
+              <Sections
+                view={view}
+                searchRef={searchRef}
+                filters={filters}
+                currency={currency}
+                fx={fx}
+                tab={tab}
+                onTab={setTab}
+                onResetRange={() => setFilters({ ...filters, min: 0, max: Number.POSITIVE_INFINITY })}
+                onFindMore={onFindMore}
+                findMoreNote={findMoreNote}
+              />
+            </>
+          )}
+
+          <footer className="flex flex-col gap-1 border-t border-[var(--border)] pt-3 text-xs text-[var(--muted)]">
+            {view?.pricing && pricesAgo && (
+              <p>
+                {t('results.pricesUpdated', {
+                  ago: t(`results.ago.${pricesAgo.key}`, { n: pricesAgo.n }),
+                  source: view.pricing.source,
+                })}
+              </p>
+            )}
+            <p data-testid="disclaimer">{t('results.disclaimer')}</p>
+          </footer>
         </>
       )}
     </div>

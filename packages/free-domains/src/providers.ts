@@ -26,7 +26,13 @@ export interface FreeProvider {
   waitTime: string;
   officialUrl: string;
   checkMethod: CheckMethod;
-  checkConfig?: { format?: 'tree' | 'js_keys'; url?: string; prefix?: string; ext?: string; type?: 'NS' | 'A' };
+  checkConfig?: {
+    format?: 'tree' | 'js_keys';
+    url?: string;
+    prefix?: string;
+    ext?: string;
+    type?: 'NS' | 'A';
+  };
   healthy: boolean;
   healthNote?: string;
 }
@@ -53,6 +59,9 @@ export function eligible(p: FreeProvider, profile: ProfileForFree): boolean {
 }
 
 /** Providers whose rules fit the detected website (FR-FREE-002). */
-export function selectProviders(profile: ProfileForFree, providers: readonly FreeProvider[] = PROVIDERS): FreeProvider[] {
+export function selectProviders(
+  profile: ProfileForFree,
+  providers: readonly FreeProvider[] = PROVIDERS,
+): FreeProvider[] {
   return providers.filter((p) => eligible(p, profile));
 }

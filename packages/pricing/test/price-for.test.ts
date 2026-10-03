@@ -43,19 +43,30 @@ describe('priceFor', () => {
   });
 
   it('uses a registry premium price when one is known, and flags short names that may be premium', () => {
-    expect(priceFor({ label: 'crumbly', tld: 'shop', status: 'available_premium', premium: { registerCents: 45_000 } }, book)).toMatchObject({
+    expect(
+      priceFor(
+        { label: 'crumbly', tld: 'shop', status: 'available_premium', premium: { registerCents: 45_000 } },
+        book,
+      ),
+    ).toMatchObject({
       premium: true,
       tier: 'premium',
     });
-    expect(priceFor({ label: 'loaf', tld: 'shop', status: 'available' }, book)).toMatchObject({ premiumPossible: true });
-    expect(priceFor({ label: 'loaf', tld: 'com', status: 'available' }, book)).toMatchObject({ premiumPossible: false });
+    expect(priceFor({ label: 'loaf', tld: 'shop', status: 'available' }, book)).toMatchObject({
+      premiumPossible: true,
+    });
+    expect(priceFor({ label: 'loaf', tld: 'com', status: 'available' }, book)).toMatchObject({
+      premiumPossible: false,
+    });
   });
 
   it('shows rules and restrictions before the visitor leaves', () => {
     expect(priceFor({ label: 'crumbly', tld: 'us', status: 'available' }, book)).toMatchObject({
       restriction: { kind: 'local_presence', note: policyFor('us').note },
     });
-    expect(priceFor({ label: 'crumbly', tld: 'dev', status: 'available' }, book)).toMatchObject({ requiresHttps: true });
+    expect(priceFor({ label: 'crumbly', tld: 'dev', status: 'available' }, book)).toMatchObject({
+      requiresHttps: true,
+    });
   });
 
   it('never invents a price: unknown extensions are unpriced', () => {

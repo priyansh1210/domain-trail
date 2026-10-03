@@ -7,19 +7,36 @@ import { PROVIDERS } from '../src/providers';
 const isADev = PROVIDERS.find((p) => p.id === 'is-a-dev')!;
 const jsOrg = PROVIDERS.find((p) => p.id === 'js-org')!;
 const tree = JSON.stringify({
-  tree: [{ path: 'domains/priya.json' }, { path: 'domains/_psl.json' }, { path: 'domains/sub/x.json' }, { path: 'README.md' }],
+  tree: [
+    { path: 'domains/priya.json' },
+    { path: 'domains/_psl.json' },
+    { path: 'domains/sub/x.json' },
+    { path: 'README.md' },
+  ],
 });
 
 describe('taken lists', () => {
   it('reads repository trees and JS key lists', () => {
-    expect([...parseTakenList('tree', tree, { prefix: 'domains/', ext: '.json' })]).toEqual(['priya', '_psl']);
-    expect([...parseTakenList('js_keys', 'var cnames_active = {\n  "react": "facebook.github.io/react",\n  "vue": "vuejs.github.io"\n}')]).toEqual(['react', 'vue']);
+    expect([...parseTakenList('tree', tree, { prefix: 'domains/', ext: '.json' })]).toEqual([
+      'priya',
+      '_psl',
+    ]);
+    expect([
+      ...parseTakenList(
+        'js_keys',
+        'var cnames_active = {\n  "react": "facebook.github.io/react",\n  "vue": "vuejs.github.io"\n}',
+      ),
+    ]).toEqual(['react', 'vue']);
   });
 
   it('checks names against the list, downloading it only once per window', async () => {
     let now = 0;
     const fetchFn = vi.fn(async () => new Response(tree));
-    const checker = createFreeChecker({ live: true, fetchFn: fetchFn as unknown as typeof fetch, now: () => now });
+    const checker = createFreeChecker({
+      live: true,
+      fetchFn: fetchFn as unknown as typeof fetch,
+      now: () => now,
+    });
     expect(await checker.check('priya', isADev)).toBe('taken');
     expect(await checker.check('crumbly', isADev)).toBe('appears_free');
     expect(fetchFn).toHaveBeenCalledTimes(1);

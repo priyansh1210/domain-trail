@@ -31,13 +31,17 @@ const toCents = (usd: unknown) => {
 
 /** Parses Porkbun's `{ status, pricing: { tld: { registration, renewal } } }` and checks it looks sane. */
 export function parsePorkbun(json: unknown): Map<string, TldPrice> {
-  const data = json as { status?: unknown; pricing?: Record<string, { registration?: unknown; renewal?: unknown }> };
+  const data = json as {
+    status?: unknown;
+    pricing?: Record<string, { registration?: unknown; renewal?: unknown }>;
+  };
   if (data.status !== 'SUCCESS' || !data.pricing) throw new Error('Porkbun pricing: unexpected answer');
   const out = new Map<string, TldPrice>();
   for (const [tld, p] of Object.entries(data.pricing)) {
     const registerCents = toCents(p.registration);
     const renewCents = toCents(p.renewal);
-    if (registerCents !== undefined && renewCents !== undefined) out.set(tld.toLowerCase(), { registerCents, renewCents });
+    if (registerCents !== undefined && renewCents !== undefined)
+      out.set(tld.toLowerCase(), { registerCents, renewCents });
   }
   assertSanePrices(out);
   return out;
@@ -53,7 +57,8 @@ export function assertSanePrices(prices: ReadonlyMap<string, TldPrice>): void {
 /** Parses Frankfurter's `{ base, date, rates }`. */
 export function parseFrankfurter(json: unknown): FxTable {
   const data = json as { base?: unknown; date?: unknown; rates?: Record<string, unknown> };
-  if (data.base !== 'USD' || !data.rates || typeof data.date !== 'string') throw new Error('FX: unexpected answer');
+  if (data.base !== 'USD' || !data.rates || typeof data.date !== 'string')
+    throw new Error('FX: unexpected answer');
   const rates: Record<string, number> = { USD: 1 };
   for (const [cur, r] of Object.entries(data.rates)) if (typeof r === 'number' && r > 0) rates[cur] = r;
   if (Object.keys(rates).length < 10) throw new Error('FX: too few currencies');

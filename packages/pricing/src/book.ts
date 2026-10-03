@@ -6,7 +6,15 @@ import fxSnapshot from '../data/fx-rates.json';
 import priceSnapshot from '../data/porkbun-prices.json';
 import policyData from '../data/tld-policies.json';
 import type { FxTable } from './client';
-import { FRANKFURTER_URL, parseFrankfurter, parsePorkbun, PORKBUN, PORKBUN_PRICING_URL, type PriceProvider, type TldPrice } from './sources';
+import {
+  FRANKFURTER_URL,
+  parseFrankfurter,
+  parsePorkbun,
+  PORKBUN,
+  PORKBUN_PRICING_URL,
+  type PriceProvider,
+  type TldPrice,
+} from './sources';
 
 export interface TldPolicy {
   restriction: 'none' | 'local_presence' | 'eligibility' | 'blocked_for_public';
@@ -16,7 +24,12 @@ export interface TldPolicy {
   premiumNames: boolean;
 }
 
-const DEFAULT_POLICY: TldPolicy = { restriction: 'none', minYears: 1, requiresHttps: false, premiumNames: true };
+const DEFAULT_POLICY: TldPolicy = {
+  restriction: 'none',
+  minYears: 1,
+  requiresHttps: false,
+  premiumNames: true,
+};
 const POLICIES = policyData.policies as Record<string, TldPolicy>;
 
 export function policyFor(tld: string): TldPolicy {
@@ -34,7 +47,9 @@ export interface PriceBook {
 
 export function snapshotBook(): PriceBook {
   const prices = new Map<string, TldPrice>();
-  for (const [tld, [registerCents, renewCents]] of Object.entries(priceSnapshot.prices as unknown as Record<string, [number, number]>))
+  for (const [tld, [registerCents, renewCents]] of Object.entries(
+    priceSnapshot.prices as unknown as Record<string, [number, number]>,
+  ))
     prices.set(tld, { registerCents, renewCents });
   return {
     provider: PORKBUN,
@@ -67,10 +82,15 @@ export function createPriceSource(opts: { live: boolean; fetchFn?: typeof fetch;
       if (!res.ok) throw new Error(`${url} → ${res.status}`);
       return res.json();
     };
-    const [prices, fx] = await Promise.allSettled([get(PORKBUN_PRICING_URL).then(parsePorkbun), get(FRANKFURTER_URL).then(parseFrankfurter)]);
+    const [prices, fx] = await Promise.allSettled([
+      get(PORKBUN_PRICING_URL).then(parsePorkbun),
+      get(FRANKFURTER_URL).then(parseFrankfurter),
+    ]);
     book = {
       ...book,
-      ...(prices.status === 'fulfilled' ? { prices: prices.value, pricesAt: new Date(now()).toISOString() } : {}),
+      ...(prices.status === 'fulfilled'
+        ? { prices: prices.value, pricesAt: new Date(now()).toISOString() }
+        : {}),
       ...(fx.status === 'fulfilled' ? { fx: fx.value } : {}),
     };
   }

@@ -10,8 +10,10 @@ describe('DNS checks for free names', () => {
   it('reads registered (NS) and resolving (A) answers', async () => {
     const fetchFn = vi.fn(async (url: string) => {
       const name = new URL(url).searchParams.get('name')!;
-      if (name === 'taken.eu.org') return Response.json({ Status: 0, Answer: [{ name: 'taken.eu.org.', type: 2 }] });
-      if (name === 'used.pages.dev') return Response.json({ Status: 0, Answer: [{ name: 'used.pages.dev.', type: 1 }] });
+      if (name === 'taken.eu.org')
+        return Response.json({ Status: 0, Answer: [{ name: 'taken.eu.org.', type: 2 }] });
+      if (name === 'used.pages.dev')
+        return Response.json({ Status: 0, Answer: [{ name: 'used.pages.dev.', type: 1 }] });
       return Response.json({ Status: 3 });
     });
     const checker = createFreeChecker({ live: true, fetchFn: fetchFn as unknown as typeof fetch });

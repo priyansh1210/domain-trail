@@ -107,10 +107,19 @@ export function positionToUsd(position: number): number {
 export function usdToPosition(usd: number): number {
   if (usd <= 0) return 0;
   if (!Number.isFinite(usd) || usd >= pricing.sliderMaxUsd) return SLIDER_STEPS;
-  return Math.max(1, Math.min(SLIDER_STEPS - 1, Math.round((Math.log10(Math.max(1, usd)) / Math.log10(pricing.sliderMaxUsd)) * SLIDER_STEPS)));
+  return Math.max(
+    1,
+    Math.min(
+      SLIDER_STEPS - 1,
+      Math.round((Math.log10(Math.max(1, usd)) / Math.log10(pricing.sliderMaxUsd)) * SLIDER_STEPS),
+    ),
+  );
 }
 
 /** Range filter on USD cents; max = Infinity means no upper bound. Free results count when min is 0 (FR-PRC-018). */
 export function inRange(usdCents: number, minUsd: number, maxUsd: number): boolean {
-  return usdCents >= Math.round(minUsd * 100) && (maxUsd === Number.POSITIVE_INFINITY || usdCents <= Math.round(maxUsd * 100));
+  return (
+    usdCents >= Math.round(minUsd * 100) &&
+    (maxUsd === Number.POSITIVE_INFINITY || usdCents <= Math.round(maxUsd * 100))
+  );
 }

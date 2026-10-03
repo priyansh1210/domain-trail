@@ -3,13 +3,19 @@
 import { describe, expect, it } from 'vitest';
 import { type FxTable, formatMoney, sectionLabel, showPremiumSection } from '../src/client';
 
-const fx: FxTable = { base: 'USD', asOf: '2026-10-02', rates: { USD: 1, JPY: 157.67, INR: 96.32, EUR: 0.89087 } };
+const fx: FxTable = {
+  base: 'USD',
+  asOf: '2026-10-02',
+  rates: { USD: 1, JPY: 157.67, INR: 96.32, EUR: 0.89087 },
+};
 
 describe('the $300+ section', () => {
   it('is hidden when empty and no premium or resale source is configured', () => {
     expect(showPremiumSection(0, { premiumProviders: [], aftermarketProviders: [] })).toBe(false);
     expect(showPremiumSection(2, { premiumProviders: [], aftermarketProviders: [] })).toBe(true);
-    expect(showPremiumSection(0, { premiumProviders: ['porkbun-check'], aftermarketProviders: [] })).toBe(true);
+    expect(showPremiumSection(0, { premiumProviders: ['porkbun-check'], aftermarketProviders: [] })).toBe(
+      true,
+    );
   });
 });
 

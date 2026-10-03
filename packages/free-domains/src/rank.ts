@@ -46,7 +46,9 @@ export async function findFreeNames(opts: {
   const per = opts.perProvider ?? 8;
   const checks = opts.providers.flatMap((p) =>
     opts.labels
-      .filter((l) => VALID_SUBDOMAIN.test(l.label) && (p.kind === 'platform_address' || !l.label.includes('-')))
+      .filter(
+        (l) => VALID_SUBDOMAIN.test(l.label) && (p.kind === 'platform_address' || !l.label.includes('-')),
+      )
       .slice(0, per)
       .map(async (l) => {
         const status = await opts.checker.check(l.label, p).catch(() => 'not_verifiable' as const);

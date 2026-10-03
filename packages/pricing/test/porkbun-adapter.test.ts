@@ -9,7 +9,9 @@ const porkbun = (n = 400, com = '11.08') => ({
   pricing: {
     com: { registration: com, renewal: com, transfer: com },
     shop: { registration: '2.06', renewal: '31.41' },
-    ...Object.fromEntries(Array.from({ length: n }, (_, i) => [`t${i}`, { registration: '9.99', renewal: '12.00' }])),
+    ...Object.fromEntries(
+      Array.from({ length: n }, (_, i) => [`t${i}`, { registration: '9.99', renewal: '12.00' }]),
+    ),
   },
 });
 
@@ -31,7 +33,13 @@ describe('Porkbun price list', () => {
   });
 
   it('parses FX rates with USD as the base', () => {
-    const fx = parseFrankfurter({ base: 'USD', date: '2026-10-02', rates: Object.fromEntries('EUR GBP JPY INR CNY CAD AUD CHF SGD SEK'.split(' ').map((c, i) => [c, i + 1])) });
+    const fx = parseFrankfurter({
+      base: 'USD',
+      date: '2026-10-02',
+      rates: Object.fromEntries(
+        'EUR GBP JPY INR CNY CAD AUD CHF SGD SEK'.split(' ').map((c, i) => [c, i + 1]),
+      ),
+    });
     expect(fx.rates.USD).toBe(1);
     expect(fx.rates.JPY).toBe(3);
   });
@@ -41,10 +49,26 @@ describe('price source', () => {
   it('answers from the snapshot at once and refreshes in the background in live mode', async () => {
     let now = Date.parse('2026-10-04T00:00:00Z');
     const fetchFn = vi.fn(async (url: string) =>
-      Response.json(url.includes('porkbun') ? porkbun(400, '12.00') : { base: 'USD', date: '2026-10-03', rates: Object.fromEntries('EUR GBP JPY INR CNY CAD AUD CHF SGD SEK'.split(' ').map((c) => [c, 2])) }),
+      Response.json(
+        url.includes('porkbun')
+          ? porkbun(400, '12.00')
+          : {
+              base: 'USD',
+              date: '2026-10-03',
+              rates: Object.fromEntries(
+                'EUR GBP JPY INR CNY CAD AUD CHF SGD SEK'.split(' ').map((c) => [c, 2]),
+              ),
+            },
+      ),
     );
-    const source = createPriceSource({ live: true, fetchFn: fetchFn as unknown as typeof fetch, now: () => now });
-    expect(source.get().prices.get('com')!.registerCents).toBe(snapshotBook().prices.get('com')!.registerCents);
+    const source = createPriceSource({
+      live: true,
+      fetchFn: fetchFn as unknown as typeof fetch,
+      now: () => now,
+    });
+    expect(source.get().prices.get('com')!.registerCents).toBe(
+      snapshotBook().prices.get('com')!.registerCents,
+    );
     await source.settled();
     expect(source.get().prices.get('com')!.registerCents).toBe(1200);
     expect(source.get().fx.asOf).toBe('2026-10-03');

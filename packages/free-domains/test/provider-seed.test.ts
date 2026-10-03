@@ -23,7 +23,8 @@ describe('free provider seed', () => {
 
   it('never uses DNS for suffixes that answer every name, and leaves out suspended providers', () => {
     const wildcards = ['vercel.app', 'netlify.app', 'github.io', 'is-a.dev', 'js.org'];
-    for (const p of PROVIDERS.filter((x) => wildcards.includes(x.suffix))) expect(p.checkMethod, p.id).not.toBe('doh');
+    for (const p of PROVIDERS.filter((x) => wildcards.includes(x.suffix)))
+      expect(p.checkMethod, p.id).not.toBe('doh');
     expect(PROVIDERS.some((p) => p.suffix === 'us.kg')).toBe(false);
     expect(PROVIDERS.filter((p) => p.kind === 'platform_address').length).toBeGreaterThanOrEqual(3);
   });

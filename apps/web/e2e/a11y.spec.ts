@@ -1,4 +1,4 @@
-// Spec 009 `a11y.spec.ts` (FR-UX-013, NFR-UX-004) and `seo.spec.ts` (FR-UX-016) for the pages that exist in M2:
+// Spec 009 `a11y.spec.ts` (FR-UX-013, NFR-UX-004; NFR-PRC-003) and `seo.spec.ts` (FR-UX-016) for the pages so far:
 // no serious or critical axe violations; result pages are not indexed.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
@@ -25,6 +25,7 @@ test('the results page has no serious accessibility problems and is not indexed'
     .fill('Online bakery in Pune delivering sourdough bread and cakes');
   await page.getByRole('button', { name: 'Find domains' }).click();
   await expect(page.getByTestId('feature-chips')).toBeVisible();
+  await expect(page.getByText('✓ Pricing')).toBeVisible({ timeout: 20_000 }); // filter, sections and cards present
   await noSeriousViolations(page);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
 });

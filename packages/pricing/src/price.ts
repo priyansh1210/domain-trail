@@ -49,7 +49,9 @@ const PREMIUM_LIKELY_MAX_LENGTH = 5;
 export function priceFor(input: PriceInput, book: PriceBook): PricedResult | Unpriced {
   const policy = book.policyFor(input.tld);
   const restriction: Restriction | undefined =
-    policy.restriction !== 'none' && policy.note ? { kind: policy.restriction, note: policy.note } : undefined;
+    policy.restriction !== 'none' && policy.note
+      ? { kind: policy.restriction, note: policy.note }
+      : undefined;
   const base = { requiresHttps: policy.requiresHttps, ...(restriction ? { restriction } : {}) };
   const list = book.prices.get(input.tld);
   if (!list && !input.premium) return { priced: false, ...base };
@@ -80,7 +82,12 @@ export function priceFor(input: PriceInput, book: PriceBook): PricedResult | Unp
 }
 
 /** Extensions whose upfront price falls in the band (±10 % neighbours) for "Find more in this range" (FR-PRC-009). */
-export function tldsInBand(minCents: number, maxCents: number | null, pool: readonly string[], book: PriceBook): string[] {
+export function tldsInBand(
+  minCents: number,
+  maxCents: number | null,
+  pool: readonly string[],
+  book: PriceBook,
+): string[] {
   const lo = minCents * 0.9;
   const hi = maxCents === null ? Number.POSITIVE_INFINITY : maxCents * 1.1;
   return pool.filter((tld) => {
