@@ -11,3 +11,6 @@ minimumReleaseAgeExclude:
   - eslint@10.12.0
   - pino@10.4.0
   - turbo@2.11.7
+# Install scripts reviewed: esbuild's only checks its prebuilt binary, which works without it.
+allowBuilds:
+  esbuild: false
