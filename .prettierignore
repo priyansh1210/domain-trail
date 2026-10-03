@@ -8,3 +8,6 @@ specs/
 tasks/
 *.md
 supabase/migrations/
+# generated data snapshots (scripts/build-words.mjs, scripts/snapshot-public-data.mjs)
+packages/*/data/*.json
+packages/core/src/generation/data/*.json

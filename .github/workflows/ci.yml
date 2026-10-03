@@ -19,6 +19,7 @@ jobs:
     timeout-minutes: 15
     env:
       MOCK_EXTERNALS: '1' # tests never call live services (FR-QA-003)
+      PUBLIC_DATA_MODE: fixture # recorded DNS, RDAP, price and FX answers
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
