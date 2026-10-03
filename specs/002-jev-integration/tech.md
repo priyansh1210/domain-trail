@@ -44,7 +44,7 @@ packages/jev
 | Endpoint (gateway) | `POST https://ai-gateway.vercel.sh/typesafe/v1/systemone` | flaviocopes.com/jev-api-key |
 | Endpoint (ngrok) | `POST https://gateway.ngrok.ai/v1/systemone` (TypeSafe names and shapes, pinned `jev-1.13.0`; `JEV_ROUTE=ngrok`, `NGROK_AI_API_KEY`). Vercel's gateway answers 403 `customer_verification_required` until a card is on file | ngrok.com/changelog/ai-gateway-typesafe-jev (2026-10-04) |
 | Models endpoint | `GET /v1/models` (gateway: `GET /typesafe/v1/models`) | same |
-| Model name on the gateway | `maker/model`, e.g. `typesafe-ai/jev`; the transport sends `typesafe-ai/<JEV_MODEL>` and strips the prefix from responses. Errors: `{ message, error_type }` | vercel.com/docs/ai-gateway/sdks-and-apis/typesafe (2026-10-04) |
+| Model name on the gateway | Only `typesafe-ai/jev` — Vercel's catalog has **no pinned versions** (404 `model_not_found` for `typesafe-ai/jev-1.13.0`, 2026-10-04). The transport sends `typesafe-ai/jev` on this route and strips the prefix from responses; pinning (FR-JEV-003) holds on the direct and ngrok routes only. Mitigation: the evaluation prints the catalog's release date for Jev — a new date means re-run the evaluation before trusting thresholds. Model list: `GET /typesafe/v1/models` → `{ models: [{ name, release_date }] }`. Errors: `{ message, error_type }` | vercel.com/docs/ai-gateway/sdks-and-apis/typesafe; ai-gateway.vercel.sh/v1/models (2026-10-04) |
 | Auth | `Authorization: Bearer <key>` (`TYPESAFE_API_KEY` or `AI_GATEWAY_API_KEY`) | same |
 | Body | `{ model, state, questions: { <name>: { type, instructions, criteria? } } }` | daleseo.com/jev |
 | Types | `choice` (criteria = object key→description, ≤ 255 keys), `score` (criteria = ordered array, 2–10 levels), `noul` (no criteria) | daleseo.com/jev |
@@ -271,7 +271,7 @@ Metrics (spec 015): tokens/search, degraded-rate, p95 latency per stage, breaker
 |---|---|---|
 | FR-JEV-001 | `packages/jev/index.ts` (only export), ESLint `no-restricted-imports` for transport | lint rule test |
 | FR-JEV-002 | `catalog/*.ts`, `questions/catalog.md` | `catalog-sync.test.ts` |
-| FR-JEV-003 | `JEV_MODEL` config + zod refine (rejects `-latest`/`-preview` in production) | `config.test.ts` |
+| FR-JEV-003 | `JEV_MODEL` config + zod refine (rejects `-latest`/`-preview` in production); gateway route can only use the `typesafe-ai/jev` alias (§3 facts) | `config.test.ts`, `transport.test.ts` |
 | FR-JEV-004 | `schemas.ts` | `schemas.test.ts`, `contract.test.ts` |
 | FR-JEV-005 | `transport.ts` | `transport.test.ts` |
 | FR-JEV-006 | `transport.ts` deadlines | `transport.test.ts` |

@@ -11,11 +11,15 @@ export const ROUTES = {
 
 export type Route = keyof typeof ROUTES;
 
-/** AI Gateway names models "maker/model" ("typesafe-ai/jev-1.13.0"); the rest of the app uses TypeSafe's names. */
+/**
+ * Vercel's AI Gateway offers Jev only as "typesafe-ai/jev" — no pinned versions (catalog checked 2026-10-04), so
+ * FR-JEV-003 pinning holds on the direct and ngrok routes only; the weekly evaluation watches for model changes.
+ */
+export const GATEWAY_MODEL = 'typesafe-ai/jev';
 export const GATEWAY_MODEL_PREFIX = 'typesafe-ai/';
 
 export function wireModel(model: string, route: Route): string {
-  return route === 'gateway' && !model.includes('/') ? GATEWAY_MODEL_PREFIX + model : model;
+  return route === 'gateway' ? GATEWAY_MODEL : model;
 }
 
 export type SendResult =
