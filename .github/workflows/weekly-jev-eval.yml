@@ -11,8 +11,8 @@ on:
       route:
         description: 'Where to reach Jev (ngrok needs NGROK_AI_API_KEY, gateway needs AI_GATEWAY_API_KEY and a card on Vercel)'
         type: choice
-        options: [ngrok, gateway]
-        default: ngrok
+        options: [gateway, ngrok]
+        default: gateway
 
 permissions:
   contents: read
