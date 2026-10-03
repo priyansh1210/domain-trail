@@ -1,6 +1,6 @@
 // One set of server-side services per instance. Mock mode (MOCK_EXTERNALS=1) or missing configuration uses
 // in-process implementations so local development and previews work without accounts.
-import { rulesMockHint } from '@domains-all/core';
+import { MemoryWordCache, rulesMockHint, type WordCache } from '@domains-all/core';
 import { serverEnv, type ServerEnv } from '@domains-all/config';
 import { createJev } from '@domains-all/jev';
 import { log } from '@domains-all/log';
@@ -19,6 +19,7 @@ import {
   MemorySearchStore,
   SupabaseSearchStore,
   SupabaseUsageStore,
+  SupabaseWordCache,
   supabaseAdmin,
   type SearchStore,
 } from './store';
@@ -38,6 +39,7 @@ export interface Services {
   store: SearchStore;
   limiter: Limiter;
   idempotency: Idempotency;
+  wordCache: WordCache;
   limitsEnforced: boolean;
   verifyHuman(token: string, ip: string | undefined): Promise<HumanCheck>;
   /** Throws NotConfiguredError in live mode when a secret is missing. */
@@ -65,6 +67,7 @@ export function buildServices(env: ServerEnv): Services {
         )
       : new MemoryLimiter(live ? 0.5 : 1),
     idempotency: redis ? new UpstashIdempotency(redis) : new MemoryIdempotency(),
+    wordCache: sb ? new SupabaseWordCache(sb) : new MemoryWordCache(),
     limitsEnforced: !(env.MOCK_EXTERNALS && env.RATE_LIMIT_MODE === 'off'),
     async verifyHuman(token, ip) {
       if (env.MOCK_EXTERNALS) return 'ok';

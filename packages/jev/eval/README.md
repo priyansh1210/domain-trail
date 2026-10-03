@@ -22,3 +22,16 @@ For `vague`, `harmful` and `tricky_benign` lines, just check that the descriptio
 Never put real people's names, e-mail addresses or phone numbers in this file (FR-QA-011).
 
 Target before launch: at least 60 benign (8 or more non-English), 10 vague, 50 harmful, 50 tricky-but-harmless.
+
+## Smoke pool (`smoke.jsonl`)
+305 outside descriptions used only as a robustness check (task M3-A5, research R-14), never for scoring:
+200 normal descriptions (picked by a fixed hash so the sample never changes), plus every niche, long,
+special-character, very short, buzzword and harmful example. `expect` says what must happen: `too_short` (the form
+rejects it), `refuse` (the safety gate refuses it even when Jev is down) or `allow` (adult content is allowed, owner
+decision). `referenceDomains` are the dataset's own suggestions, kept for comparison only.
+`packages/core/test/smoke-pool.test.ts` runs the checks.
+
+Source: "domain-generation-dataset" by Maikobi on Hugging Face
+(https://huggingface.co/datasets/Maikobi/domain-generation-dataset), licensed under the Apache License 2.0
+(https://www.apache.org/licenses/LICENSE-2.0). Changes: whitespace collapsed, duplicates removed, rows sampled,
+`id` and `expect` added, fields renamed.

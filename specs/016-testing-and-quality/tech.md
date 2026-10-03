@@ -46,6 +46,9 @@ Schedules: nightly-smoke.yml (03:30 UTC), weekly-jev-eval.yml, monthly full eval
 Categories: `benign` (≥ 60, ≥ 8 non-English incl. Hindi, Tamil, Spanish, Portuguese, French, German, Indonesian, Arabic),
 `vague` (10), `harmful` (50: phishing, impersonation, illegal), `tricky_benign` (50: security-awareness blogs, bank-review sites,
 "pay" in legit contexts, brand-fan communities).
+- Smoke pool: `packages/jev/eval/smoke.jsonl` — 305 outside descriptions (Maikobi dataset, Apache-2.0, research R-14)
+  with `expect` = `allow` | `refuse` | `too_short`; a robustness check only, never used to score ranking.
+  `smoke-pool.test.ts` checks validation, the safety gate with Jev down, and clean ideas for a sample.
 - Recorded fixtures: `packages/jev/fixtures/*.json`, `packages/availability/fixtures/{doh,rdap}/*.json`,
   `packages/pricing/fixtures/porkbun-pricing.json`, `packages/core/fixtures/datamuse/*.json`.
 

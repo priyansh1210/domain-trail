@@ -64,7 +64,13 @@
     "expired": "These results have expired.",
     "notFound": "These results do not exist.",
     "loading": "Loading…",
-    "startNew": "Start a new search"
+    "startNew": "Start a new search",
+    "ideasTitle": "Name ideas",
+    "ideasNote": "Not checked yet: these are ideas ranked for your website. Availability and prices are added in the next version, so some of these may already be taken.",
+    "lowSupply": "We found fewer good ideas than usual. Try adding detail to your description or relaxing the options.",
+    "noIdeas": "We couldn't create name ideas this time. Please try again or add more detail.",
+    "suggestedExtensions": "Suggested extensions",
+    "announceIdeas": "{count} name ideas are ready."
   },
   "chips": {
     "siteType": "Site type",
@@ -164,5 +170,15 @@
       "We do not check trademarks — please check before you buy.",
       "Do not use this service for phishing, impersonation or anything illegal."
     ]
+  },
+  "reasons": {
+    "keyword": "Contains your key word “{term}”",
+    "excellent_fit": "Rated an excellent fit for your site",
+    "short": "Short and easy to say ({n} letters)",
+    "tld_fit": ".{tld} suits {feature}",
+    "tld_trust": ".com is the most recognised extension",
+    "local": "Local extension for {place}",
+    "brandable": "Unique, brandable name",
+    "hack": "The extension completes the word"
   }
 }

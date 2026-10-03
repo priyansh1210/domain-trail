@@ -44,8 +44,29 @@ const MAX_EXPANSIONS = 255;
 /** About the 15,000 most common words (those seen in WordNet's tagged sample). */
 const OFFLINE_MIN_COMMONNESS = 0.11;
 
+/** WordNet's general "kind of" words: true but useless in a name ("bakery" is a kind of "workplace"). */
+const ABSTRACT = new Set(
+  (
+    'work workplace activity artifact artefact unit place thing object entity act move travel motion movement person ' +
+    'individual group organization organisation structure abstraction attribute state event location region area ' +
+    'part whole matter substance body being instrumentality establishment facility commodity merchandise product ' +
+    'content message communication case'
+  ).split(' '),
+);
+
+/** Sad or alarming words a thesaurus offers ("care" → "pity", "patient" → "sufferer"); fine when the user wrote them. */
+const GLOOMY = new Set(
+  (
+    'pity sorrow grief sadness misery suffering sufferer pain ache agony sick sickness illness disease death dead ' +
+    'dying fear dread worry anxiety stress trouble problem burden crisis danger harm hurt injury wound victim loss ' +
+    'failure debt poverty poor anger hate war crime'
+  ).split(' '),
+);
+
 function acceptable(word: string): boolean {
   return (
+    !ABSTRACT.has(word) &&
+    !GLOOMY.has(word) &&
     /^[a-z]{2,12}$/.test(word) &&
     isWord(word) &&
     !PROFANITY.some((p) => p.length >= 4 && word.includes(p)) &&

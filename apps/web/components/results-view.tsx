@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { loadSnapshot, recallInput, startSearch, useSearchStore, type SearchView } from '@/lib/client/search';
 import { t } from '@/lib/i18n';
 import { profileChips } from '@/lib/labels';
+import { reasonText } from '@/lib/reasons';
 import { useRouter } from 'next/navigation';
 
 function Banner({ tone, children }: { tone: 'info' | 'warn' | 'danger'; children: React.ReactNode }) {
@@ -23,9 +24,10 @@ function Banner({ tone, children }: { tone: 'info' | 'warn' | 'danger'; children
 
 function Stages({ view }: { view: SearchView }) {
   const featuresDone = Boolean(view.profile);
+  const namesDone = view.ideas !== undefined;
   const stages = [
     { key: 'stageFeatures', state: featuresDone ? 'done' : 'active' },
-    { key: 'stageNames', state: 'later' },
+    { key: 'stageNames', state: namesDone ? 'done' : featuresDone ? 'active' : 'later' },
     { key: 'stageAvailability', state: 'later' },
     { key: 'stagePricing', state: 'later' },
   ];
@@ -80,6 +82,46 @@ function Chips({ view }: { view: SearchView }) {
   );
 }
 
+function Ideas({ view }: { view: SearchView }) {
+  if (!view.profile) return null;
+  if (view.ideas === undefined) {
+    return (
+      <ul className="flex flex-col gap-2" aria-hidden="true">
+        {Array.from({ length: 5 }, (_, i) => (
+          <li key={i} className="h-16 animate-pulse rounded-lg bg-[var(--surface)]" />
+        ))}
+      </ul>
+    );
+  }
+  if (view.ideas.length === 0) return <p className="text-sm text-[var(--muted)]">{t('results.noIdeas')}</p>;
+  return (
+    <ol className="flex flex-col gap-2" data-testid="name-ideas">
+      {view.ideas.map((idea) => (
+        <li key={idea.label} className="rounded-lg border border-[var(--border)] p-3">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-lg font-semibold break-all">{idea.label}</span>
+            <span className="sr-only">{t('results.suggestedExtensions')}:</span>
+            <span className="flex flex-wrap gap-1 text-sm text-[var(--muted)]">
+              {idea.tlds.map((x) => (
+                <span key={x.tld} className="rounded border border-[var(--border)] px-1.5">
+                  .{x.tld}
+                </span>
+              ))}
+            </span>
+          </div>
+          {idea.reasons.length > 0 && (
+            <ul className="mt-1 flex flex-wrap gap-x-4 text-sm text-[var(--muted)]">
+              {idea.reasons.map((r) => (
+                <li key={r.id}>{reasonText(r)}</li>
+              ))}
+            </ul>
+          )}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export function ResultsView({ searchRef }: { searchRef: string }) {
   const router = useRouter();
   const view = useSearchStore((s) => s.byRef[searchRef]);
@@ -103,6 +145,10 @@ export function ResultsView({ searchRef }: { searchRef: string }) {
     if (view?.profile)
       setAnnounce(t('results.announceFeatures', { count: profileChips(view.profile).length }));
   }, [view?.profile]);
+
+  useEffect(() => {
+    if (view?.ideas?.length) setAnnounce(t('results.announceIdeas', { count: view.ideas.length }));
+  }, [view?.ideas]);
 
   async function searchAnyway() {
     const input = recallInput(searchRef);
@@ -180,7 +226,16 @@ export function ResultsView({ searchRef }: { searchRef: string }) {
             </h2>
             <Chips view={view ?? { phase: 'starting' }} />
           </section>
-          {view?.profile && <p className="text-sm text-[var(--muted)]">{t('results.comingSoon')}</p>}
+          {view?.profile && (
+            <section aria-labelledby="ideas-title" className="flex flex-col gap-3">
+              <h2 id="ideas-title" className="text-lg font-semibold">
+                {t('results.ideasTitle')}
+              </h2>
+              <p className="rounded-lg border border-[var(--warn)] p-3 text-sm">{t('results.ideasNote')}</p>
+              {view.lowSupply && <p className="text-sm text-[var(--muted)]">{t('results.lowSupply')}</p>}
+              <Ideas view={view} />
+            </section>
+          )}
         </>
       )}
     </div>

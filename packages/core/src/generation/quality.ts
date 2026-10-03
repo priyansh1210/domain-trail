@@ -73,7 +73,8 @@ function lengthScore(n: number): number {
 function spellClarity(label: string, segments: string[]): number {
   let penalty = 0;
   if (/ph/.test(label)) penalty += 0.1;
-  if (/(^|[^a-z])(u|4|2)([^a-z]|$)/.test(label) || /\d(u|4|2)/.test(label)) penalty += 0.3; // textisms
+  if (/(4|2)(u|you|me|go|day|nite)/.test(label) || segments.includes('u') || segments.includes('ur'))
+    penalty += 0.3; // textisms ("4u", "2go"), not numbers like "24"
   if (/(.)\1/.test(label.replace(/(ll|ss|ee|oo|tt|ff|pp|rr|mm|nn|dd|cc)/g, ''))) penalty += 0.1;
   for (let i = 1; i < segments.length; i++) {
     if (segments[i - 1]!.slice(-1) === segments[i]![0]) penalty += 0.25; // "shopperspoint" style joins

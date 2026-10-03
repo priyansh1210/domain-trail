@@ -15,7 +15,8 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "trace:check": "node scripts/trace-check.mjs",
-    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm trace:check"
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm trace:check",
+    "eval:pipeline": "tsx packages/core/scripts/eval-pipeline.mts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -25,6 +26,7 @@
     "globals": "^17.13.0",
     "prettier": "^3.9.9",
     "supabase": "2.119.0",
+    "tsx": "^4.23.15",
     "turbo": "^2.11.7",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.0"

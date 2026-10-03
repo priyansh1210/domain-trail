@@ -61,7 +61,8 @@ reasonsFor(r: Scored, profile: SiteProfile): Reason[]            // 1–3
 shards = chunk(candidates sorted by (0.5Q + 0.5K) desc, 250)          // ≤ 4 shards
 ask Jev: rank_shard__i over shard i (keys o000…, values labels)       // one request, ≤ 4 questions
 lift(c) = p(c) × |shard(c)|                                           // >1 = better than uniform; comparable across shards
-pick top 15 by lift per shard; fill to 60 by deterministic score; trim to 45 by rank-average(lift rank, det rank)
+pick top 15 by lift per shard; fill to 60 by deterministic score; trim to 45 by rank-average(lift rank, det rank),
+   both ranks measured within the 60 picked (2026-10-04: a deterministic rank among all candidates drowned Jev's clear favourites)
 fallback: top 45 by deterministic score
 ```
 

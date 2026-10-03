@@ -48,7 +48,18 @@ describe('POST /api/search', () => {
     const res = await handleSearch(post(body()), s);
     expect(res.headers.get('content-type')).toContain('text/event-stream');
     const ev = await events(res);
-    expect(ev.map((e) => e.event)).toEqual(['search_created', 'progress', 'features', 'done']);
+    expect(ev.map((e) => e.event)).toEqual([
+      'search_created',
+      'progress',
+      'features',
+      'progress',
+      'ideas',
+      'done',
+    ]);
+    const ideas = (ev[4]!.data as { ideas: Array<{ label: string; tlds: Array<{ tld: string }> }> }).ideas;
+    expect(ideas.length).toBeGreaterThan(5);
+    for (const i of ideas) expect(i.label).toMatch(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/);
+    expect(JSON.stringify(ideas)).not.toMatch(/available/i); // ideas are not checked (constitution P3)
     const created = ev[0]!.data as { ref: string; cached: boolean };
     expect(created.cached).toBe(false);
     expect((ev[2]!.data as { geo: { value: string } }).geo.value).toBe('country_in');
@@ -68,7 +79,10 @@ describe('POST /api/search', () => {
     const s = svc();
     const first = await events(await handleSearch(post(body()), s));
     const second = await events(await handleSearch(post(body()), s));
-    expect(second.map((e) => e.event)).toEqual(['search_created', 'features', 'done']);
+    expect(second.map((e) => e.event)).toEqual(['search_created', 'features', 'ideas', 'done']);
+    expect((second[2]!.data as { ideas: unknown[] }).ideas).toEqual(
+      (first[4]!.data as { ideas: unknown[] }).ideas,
+    );
     expect((second[0]!.data as { cached: boolean; searchId: string }).cached).toBe(true);
     expect((second[0]!.data as { searchId: string }).searchId).toBe(
       (first[0]!.data as { searchId: string }).searchId,
@@ -87,6 +101,7 @@ describe('POST /api/search', () => {
       results: unknown[];
     };
     expect(json).toMatchObject({ status: 'done', results: [] });
+    expect((json as unknown as { ideas: unknown[] }).ideas.length).toBeGreaterThan(5);
     expect(json.profile.industry.value).toBe('food__bakery');
     expect(JSON.stringify(json)).not.toContain('sourdough bread');
     expect((await handleSnapshot(`${ref.slice(0, 36)}.deadbeef`, s)).status).toBe(404);
@@ -159,7 +174,15 @@ describe('POST /api/search', () => {
       throw new Error('db down');
     };
     const ev = await events(await handleSearch(post(body()), { ...s, store: broken }));
-    expect(ev.map((e) => e.event)).toEqual(['search_created', 'notice', 'progress', 'features', 'done']);
+    expect(ev.map((e) => e.event)).toEqual([
+      'search_created',
+      'notice',
+      'progress',
+      'features',
+      'progress',
+      'ideas',
+      'done',
+    ]);
     expect((ev[1]!.data as { code: string }).code).toBe('not_saved');
   });
 });

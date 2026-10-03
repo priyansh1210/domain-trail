@@ -9,6 +9,7 @@ import { GAZETTEER } from '../features/seed/signals';
 import { TAXONOMY } from '../features/seed/taxonomy';
 import type { SiteProfile } from '../features/types';
 import { brandTokensIn } from '../safety/brand-risk';
+import { commonness } from './lexicon';
 
 export interface Term {
   text: string; // lower-case ASCII; phrases keep one space ("sourdough bread")
@@ -84,11 +85,14 @@ export function extractTerms(description: string, profile?: SiteProfile): Term[]
     const key = ascii(t);
     if (!key || key.length < 3 || /^\d+$/.test(key)) return;
     const cur = score.get(key);
-    score.set(key, {
-      text: key,
-      kind: cur?.kind === 'phrase' || kind === 'phrase' ? 'phrase' : (cur?.kind ?? kind),
-      tf: (cur?.tf ?? 0) + tf,
-    });
+    // A named place is always a place (for place-based names); otherwise a phrase stays a phrase.
+    const merged: Term['kind'] =
+      kind === 'geo' || cur?.kind === 'geo'
+        ? 'geo'
+        : kind === 'phrase' || cur?.kind === 'phrase'
+          ? 'phrase'
+          : (cur?.kind ?? kind);
+    score.set(key, { text: key, kind: merged, tf: (cur?.tf ?? 0) + tf });
   };
 
   let run: string[] = [];
@@ -108,7 +112,8 @@ export function extractTerms(description: string, profile?: SiteProfile): Term[]
       !brands.has(lemma) &&
       POS_WEIGHT[p] !== undefined;
     if (keep) {
-      add(lemma, 'word', POS_WEIGHT[p]!);
+      // Specific words matter more than everyday ones ("photographer" over "form"): TF × (0.5 + specificity).
+      add(lemma, 'word', POS_WEIGHT[p]! * (0.5 + (1 - commonness(lemma))));
       if (p === 'NOUN' || p === 'ADJ' || p === 'PROPN') run.push(lemma);
       else flush();
     } else flush();

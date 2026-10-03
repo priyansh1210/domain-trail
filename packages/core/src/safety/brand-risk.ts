@@ -71,18 +71,39 @@ export function editDistance(a: string, b: string, max = 2): number {
   return d[a.length]![b.length]!;
 }
 
+/** True when a and b are at most one edit apart (substitution, insertion, deletion or adjacent swap). O(n). */
+export function withinOneEdit(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  if (a.length === b.length) {
+    if (a.slice(i + 1) === b.slice(i + 1)) return true; // one substitution
+    return a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2); // adjacent swap
+  }
+  return a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1); // insertion/deletion
+}
+
 interface BrandIndex {
+  byLength: Map<number, string[]>; // strong brands of 6+ letters by length, for the one-typo rule
   strong: string[]; // not ordinary words: exact, contains, typo rules apply
   weak: Set<string>; // ordinary words too: only strict mode or next to security words
   all: Set<string>;
 }
 
+const LONG_SECURITY_TERMS = [...SECURITY_TERMS].filter((s) => s.length >= 5);
+
 let index: BrandIndex | undefined;
 function brandIndex(extra: readonly string[] = []): BrandIndex {
   if (index && extra.length === 0) return index;
   const list = [...new Set([...BRANDS, ...extra].map((b) => b.toLowerCase()))];
+  const strongList = list.filter((b) => !WEAK_BRANDS.has(b));
+  const byLength = new Map<number, string[]>();
+  for (const b of strongList)
+    if (b.length >= 6) byLength.set(b.length, [...(byLength.get(b.length) ?? []), b]);
   const built: BrandIndex = {
-    strong: list.filter((b) => !WEAK_BRANDS.has(b)),
+    byLength,
+    strong: strongList,
     weak: new Set(list.filter((b) => WEAK_BRANDS.has(b))),
     all: new Set(list),
   };
@@ -108,19 +129,22 @@ export function brandRisk(
       return { risky: true, rule: 'description_brand', brand: token };
   }
   const hasSecurityWord =
-    segments.some((s) => SECURITY_TERMS.has(s)) ||
-    [...SECURITY_TERMS].some((s) => s.length >= 5 && label.includes(s));
+    segments.some((s) => SECURITY_TERMS.has(s)) || LONG_SECURITY_TERMS.some((s) => label.includes(s));
+  // Only brands within one letter of the same length can be one typo away.
+  const nearby = (s: string) =>
+    [s.length - 1, s.length, s.length + 1].flatMap((n) => idx.byLength.get(n) ?? []);
 
   for (const v of variants(label)) {
     if (idx.strong.includes(v) || (opts.strict && idx.weak.has(v)))
       return { risky: true, rule: 'exact', brand: v };
+    for (const b of nearby(v)) if (withinOneEdit(v, b)) return { risky: true, rule: 'typo', brand: b };
+    for (const seg of segments) {
+      if (seg.length >= 5)
+        for (const b of nearby(seg))
+          if (withinOneEdit(seg, b)) return { risky: true, rule: 'typo', brand: b };
+    }
     for (const b of idx.strong) {
       if (b.length >= 5 && v.includes(b)) return { risky: true, rule: 'contains', brand: b };
-      if (b.length >= 6 && editDistance(v, b, 1) <= 1) return { risky: true, rule: 'typo', brand: b };
-      for (const seg of segments) {
-        if (b.length >= 6 && seg.length >= 5 && editDistance(seg, b, 1) <= 1)
-          return { risky: true, rule: 'typo', brand: b };
-      }
       if (opts.strict) {
         if (b.length >= 4 && v.includes(b)) return { risky: true, rule: 'contains_strict', brand: b };
         if (b.length >= 8 && editDistance(v, b, 2) <= 2)

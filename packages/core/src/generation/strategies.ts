@@ -1,7 +1,7 @@
 // Stage S3: candidate names from 12 naming styles (spec 004 tech §5.4; FR-GEN-004, 005, 012, 013, 016).
 // Every random choice uses the seeded generator, so the same search gives the same candidates (FR-GEN-014).
 import { isWord, nextLetterWeights } from './lexicon';
-import { pronounceability } from './quality';
+import { pronounceability, segment } from './quality';
 import { type Rng, sample } from './rng';
 
 export type Strategy =
@@ -85,12 +85,15 @@ function attachSuffix(word: string, suffix: string): string {
 }
 
 function blend(a: string, b: string): string | null {
+  // overlap: the end of a is the start of b ("bread" + "adventure" → "breadventure")
   for (let k = Math.min(a.length, b.length) - 1; k >= 2; k--) {
-    if (a.endsWith(b.slice(0, k))) return a + b.slice(k); // overlap: bread + delight → breadelight? needs "de" overlap
+    if (a.endsWith(b.slice(0, k)) && b.length - k >= 3) return a + b.slice(k);
   }
-  const lastVowel = a.search(/[aeiouy][^aeiouy]*$/);
+  // vowel splice: a up to a vowel before its last letter, b from after its first vowel; at least 3 letters of each
+  const lastVowel = a.slice(0, -1).search(/[aeiouy][^aeiouy]*$/);
   const firstVowel = b.search(VOWELS);
-  if (lastVowel > 1 && firstVowel > 0) return a.slice(0, lastVowel + 1) + b.slice(firstVowel + 1);
+  if (lastVowel >= 2 && firstVowel >= 0 && b.length - (firstVowel + 1) >= 3)
+    return a.slice(0, lastVowel + 1) + b.slice(firstVowel + 1);
   return null;
 }
 
@@ -104,7 +107,8 @@ function clip(word: string): string[] {
   // vowel drop before a final y/r ("bakery" → "bakry")
   const dropped = word.replace(/e(r|ry|y)$/, '$1');
   if (dropped !== word && dropped.length >= 4) out.push(dropped);
-  return out;
+  // A clip that reads as other words misleads ("healthcare" → "healthcar" = health + car).
+  return out.filter((c) => (segment(c)?.length ?? 0) < 2);
 }
 
 const SOUND: Record<string, string> = { c: 'k', k: 'k', q: 'k', f: 'f', s: 's', z: 's' };
