@@ -59,7 +59,7 @@ them and keep the recovery codes somewhere offline.
    - Code security → enable secret scanning and push protection (free on public repositories).
 2. **Vercel** — sign in with GitHub → *Add New Project* → import the repository → **Root Directory: `apps/web`** →
    Deploy. The first deploy runs in mock mode; open `https://<project>.vercel.app/api/health` to confirm
-   (this completes milestone M1). Function region is already set to Mumbai (`bom1`) in `apps/web/vercel.json`.
+   (this completes milestone M1). Live address: https://domain-trail.vercel.app (deployed 2026-10-03). Function region is already set to Mumbai (`bom1`) in `apps/web/vercel.json`.
    Add `NEXT_PUBLIC_SITE_URL=https://<project>.vercel.app` and `NEXT_PUBLIC_SITE_NAME=<name>` under
    Settings → Environment Variables.
 3. **Vercel AI Gateway** — create an API key, check that the `typesafe-ai/jev` model is listed, save it as
