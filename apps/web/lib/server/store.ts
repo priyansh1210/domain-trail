@@ -1,6 +1,6 @@
 // Search persistence (spec 012 tech §3: `searches`, `result_cache`; spec 002: `jev_usage`). Never stores the
 // description (FR-DATA-002, FR-INT-012). Mock mode and missing configuration use the in-memory store.
-import type { SiteProfile } from '@domains-all/core';
+import type { Idea, SiteProfile, WordCache } from '@domains-all/core';
 import type { UsageStore } from '@domains-all/jev';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
@@ -38,12 +38,24 @@ export interface SearchStore {
   getSearch(id: string, now?: Date): Promise<SearchRecord | null>;
   cacheLookup(cacheKey: string, now?: Date): Promise<string | null>;
   cachePut(cacheKey: string, searchId: string, expiresAt: string): Promise<void>;
+  /** M3 preview: ranked name ideas, kept as `search_results` rows (section 'unpriced', status 'idea'). */
+  saveIdeas(id: string, ideas: readonly Idea[]): Promise<void>;
+  getIdeas(id: string): Promise<Idea[]>;
 }
 
 export class MemorySearchStore implements SearchStore {
   readonly kind = 'memory' as const;
   readonly searches = new Map<string, SearchRecord & { cacheKey: string; prefs: unknown }>();
   readonly cache = new Map<string, { searchId: string; expiresAt: string }>();
+  readonly ideas = new Map<string, Idea[]>();
+
+  async saveIdeas(id: string, ideas: readonly Idea[]) {
+    this.ideas.set(id, [...ideas]);
+  }
+
+  async getIdeas(id: string) {
+    return this.ideas.get(id) ?? [];
+  }
 
   async createSearch(s: {
     id: string;
@@ -194,6 +206,83 @@ export class SupabaseSearchStore implements SearchStore {
         .from('result_cache')
         .upsert({ cache_key: cacheKey, search_id: searchId, expires_at: expiresAt }),
     );
+  }
+
+  saveIdeas(id: string, ideas: readonly Idea[]) {
+    return saveIdeasRows(this.sb, id, ideas);
+  }
+
+  getIdeas(id: string) {
+    return getIdeasRows(this.sb, id);
+  }
+}
+
+/** Ideas as `search_results` rows (spec 012): no personal data, best extension in `fqdn`, the rest in `signals`. */
+export async function saveIdeasRows(sb: SupabaseClient, id: string, ideas: readonly Idea[]) {
+  if (ideas.length === 0) return;
+  check(
+    await sb.from('search_results').upsert(
+      ideas.map((idea, rank) => ({
+        search_id: id,
+        fqdn: `${idea.label}.${idea.tlds[0]?.tld ?? 'com'}`,
+        section: 'unpriced',
+        rank,
+        score: idea.score,
+        status: 'idea',
+        signals: { tlds: idea.tlds, source: idea.source },
+        reasons: idea.reasons,
+        strategy: idea.strategy,
+      })),
+    ),
+  );
+}
+
+export async function getIdeasRows(sb: SupabaseClient, id: string): Promise<Idea[]> {
+  const rows = check(
+    await sb
+      .from('search_results')
+      .select('fqdn,score,signals,reasons,strategy')
+      .eq('search_id', id)
+      .eq('status', 'idea')
+      .order('rank'),
+  ) as Array<{
+    fqdn: string;
+    score: number;
+    signals: { tlds: Idea['tlds']; source: Idea['source'] };
+    reasons: Idea['reasons'];
+    strategy: string;
+  }> | null;
+  return (rows ?? []).map((r) => ({
+    label: r.fqdn.split('.')[0]!,
+    score: r.score,
+    tlds: r.signals.tlds,
+    source: r.signals.source,
+    reasons: r.reasons,
+    strategy: r.strategy,
+  }));
+}
+
+/** Datamuse answers cached 30 days in `word_cache` (spec 004 tech §3, spec 012). */
+export class SupabaseWordCache implements WordCache {
+  constructor(
+    private readonly sb: SupabaseClient,
+    private readonly ttlDays = 30,
+  ) {}
+
+  async get(term: string, relation: string) {
+    const since = new Date(Date.now() - this.ttlDays * 86_400_000).toISOString();
+    const r = await this.sb
+      .from('word_cache')
+      .select('words')
+      .eq('term', term)
+      .eq('relation', relation)
+      .gt('fetched_at', since)
+      .maybeSingle();
+    return r.error ? null : ((r.data as { words: string[] } | null)?.words ?? null);
+  }
+
+  async set(term: string, relation: string, words: string[]) {
+    await this.sb.from('word_cache').upsert({ term, relation, words, fetched_at: new Date().toISOString() });
   }
 }
 

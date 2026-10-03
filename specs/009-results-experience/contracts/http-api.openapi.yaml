@@ -523,6 +523,7 @@ components:
         status: { type: string, enum: [running, done, refused, needs_detail, error] }
         profile: { $ref: '#/components/schemas/SiteProfile' }
         results: { type: array, items: { $ref: '#/components/schemas/Result' } }
+        ideas: { type: array, items: { $ref: '#/components/schemas/Idea' }, description: TEMPORARY (M3 preview) }
         degraded: { type: boolean }
     StreamEvent:
       description: One server-sent event. The `event:` field names the type; `data:` holds JSON.
@@ -534,6 +535,7 @@ components:
         - { $ref: '#/components/schemas/StreamEventRefused' }
         - { $ref: '#/components/schemas/StreamEventDegraded' }
         - { $ref: '#/components/schemas/StreamEventBatch' }
+        - { $ref: '#/components/schemas/StreamEventIdeas' }
         - { $ref: '#/components/schemas/StreamEventUpdate' }
         - { $ref: '#/components/schemas/StreamEventNotice' }
         - { $ref: '#/components/schemas/StreamEventDone' }
@@ -573,6 +575,26 @@ components:
       properties:
         event: { const: batch }
         data: { type: object, properties: { results: { type: array, items: { $ref: '#/components/schemas/Result' } } } }
+    StreamEventIdeas:
+      description: TEMPORARY (milestone M3 preview, replaced by `batch` results in M4). Ranked name ideas with suggested extensions; not checked for availability and never labelled "available" (constitution P3).
+      type: object
+      properties:
+        event: { const: ideas }
+        data:
+          type: object
+          properties:
+            ideas: { type: array, items: { $ref: '#/components/schemas/Idea' } }
+            lowSupply: { type: boolean }
+    Idea:
+      type: object
+      required: [label, tlds, reasons]
+      properties:
+        label: { type: string }
+        strategy: { type: string }
+        score: { type: number }
+        source: { type: string, enum: [jev, deterministic] }
+        tlds: { type: array, items: { type: object, properties: { tld: { type: string }, fit: { type: number } } } }
+        reasons: { type: array, maxItems: 3, items: { type: object, properties: { id: { type: string }, vars: { type: object } } } }
     StreamEventUpdate:
       type: object
       properties:

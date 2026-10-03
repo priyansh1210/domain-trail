@@ -1,7 +1,7 @@
 'use client';
 // Client side of the search stream (spec 001 tech §1 step 8, spec 009 tech §4–5). The description stays in this
 // browser tab's sessionStorage only (FR-INT-012); the server never stores it.
-import type { Preferences, SiteProfile } from '@domains-all/core/client';
+import type { Idea, Preferences, SiteProfile } from '@domains-all/core/client';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { create } from 'zustand';
 
@@ -20,6 +20,8 @@ export interface SearchView {
   hints?: string[];
   notSaved?: boolean;
   cached?: boolean;
+  ideas?: Idea[]; // M3 preview: not checked for availability
+  lowSupply?: boolean;
 }
 
 export type StartError =
@@ -116,6 +118,9 @@ export function startSearch(
           case 'features':
             set(ref, { phase: 'features', profile: data as unknown as SiteProfile });
             break;
+          case 'ideas':
+            set(ref, { ideas: (data.ideas as Idea[]) ?? [], lowSupply: Boolean(data.lowSupply) });
+            break;
           case 'degraded':
             set(ref, { degraded: data.reason as SearchView['degraded'] });
             break;
@@ -160,7 +165,12 @@ export async function loadSnapshot(ref: string): Promise<void> {
     return set(ref, { phase: body.error === 'expired' ? 'expired' : 'not_found' });
   }
   if (!res.ok) return set(ref, { phase: 'error' });
-  const snap = (await res.json()) as { status: string; profile: SiteProfile | null; degraded: boolean };
+  const snap = (await res.json()) as {
+    status: string;
+    profile: SiteProfile | null;
+    degraded: boolean;
+    ideas?: Idea[];
+  };
   const phase: Phase =
     snap.status === 'done'
       ? 'done'
@@ -174,6 +184,7 @@ export async function loadSnapshot(ref: string): Promise<void> {
   set(ref, {
     phase,
     profile: snap.profile ?? undefined,
+    ...(snap.ideas?.length ? { ideas: snap.ideas } : {}),
     ...(snap.degraded ? { degraded: 'jev_unavailable' } : {}),
   });
 }

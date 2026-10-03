@@ -4,9 +4,11 @@ import {
   cacheKey,
   newSearchId,
   parseSearchRef,
+  runNames,
   runS1,
   SearchRequestSchema,
   searchRef,
+  type Idea,
   type SiteProfile,
 } from '@domains-all/core';
 import { PIPELINE_VERSION, rateLimits, retention } from '@domains-all/config';
@@ -25,10 +27,11 @@ function fieldErrors(issues: Array<{ path: PropertyKey[]; message: string }>): R
   return out;
 }
 
-function replay(sink: EventSink, s: { id: string; ref: string; features: SiteProfile }) {
+function replay(sink: EventSink, s: { id: string; ref: string; features: SiteProfile; ideas: Idea[] }) {
   sink.send('search_created', { searchId: s.id, ref: s.ref, cached: true });
   sink.send('features', s.features);
-  sink.send('done', { counts: {}, durationMs: 0 });
+  sink.send('ideas', { ideas: s.ideas, lowSupply: false });
+  sink.send('done', { counts: { ideas: s.ideas.length }, durationMs: 0 });
 }
 
 export async function handleSearch(req: Request, svc: Services): Promise<Response> {
@@ -88,9 +91,10 @@ export async function handleSearch(req: Request, svc: Services): Promise<Respons
     const rec = await svc.store.getSearch(cachedId).catch(() => null);
     if (rec?.status === 'done' && rec.features) {
       const features = rec.features;
+      const ideas = await svc.store.getIdeas(rec.id).catch(() => []);
       log.info({ event: 'search', outcome: 'cache_hit', searchId: rec.id });
       return eventStream(async (sink) =>
-        replay(sink, { id: rec.id, ref: searchRef(rec.id, secrets.searchLink), features }),
+        replay(sink, { id: rec.id, ref: searchRef(rec.id, secrets.searchLink), features, ideas }),
       );
     }
   }
@@ -134,25 +138,53 @@ export async function handleSearch(req: Request, svc: Services): Promise<Respons
       return;
     }
 
-    const durationMs = Date.now() - started;
-    const degraded = 'degraded' in outcome && outcome.degraded ? outcome.degraded : undefined;
-    await svc.jev
-      .recordSearch({
-        tokens: outcome.usage.tokens,
-        requests: outcome.usage.requests,
-        degraded: Boolean(degraded),
-      })
-      .catch((e) => log.warn({ event: 'jev.usage_not_recorded', error: (e as Error).message }));
+    const s1Ms = Date.now() - started;
+    let degraded = 'degraded' in outcome && outcome.degraded ? outcome.degraded : undefined;
     if (degraded) sink.send('degraded', { reason: degraded });
+    const usage = { ...outcome.usage };
 
     const status = outcome.kind === 'features' ? 'done' : outcome.kind;
+    let ideas: Idea[] = [];
+    let stageMs: Record<string, number> = { S1: s1Ms };
     if (outcome.kind === 'refused') sink.send('refused', { reason: 'safety' });
     else if (outcome.kind === 'needs_detail') sink.send('needs_detail', { hints: outcome.hints });
     else {
       sink.send('features', outcome.profile);
-      // M2 ends after S1; generation, availability and pricing stages arrive in M3–M4.
-      sink.send('done', { counts: {}, durationMs });
+      // S2–S6: name ideas ranked by Jev. Availability and prices (S7–S8) arrive in milestone M4.
+      sink.send('progress', { stage: 'names', pct: 30 });
+      try {
+        const names = await runNames({
+          description,
+          preferences,
+          profile: outcome.profile,
+          strictBrand: outcome.strictBrand,
+          searchId: id,
+          seed: key,
+          jev: svc.jev,
+          live: !svc.env.MOCK_EXTERNALS,
+          wordCache: svc.wordCache,
+        });
+        ideas = names.ideas;
+        usage.tokens += names.usage.tokens;
+        usage.requests += names.usage.requests;
+        if (names.degraded && !degraded) {
+          degraded = names.degraded;
+          sink.send('degraded', { reason: degraded });
+        }
+        sink.send('ideas', { ideas, lowSupply: names.lowSupply });
+        stageMs = { S1: s1Ms, names: Date.now() - started - s1Ms };
+      } catch (e) {
+        // The chips are already shown; a failure here should not turn the whole search into an error.
+        log.error({ event: 'search.names_failed', searchId: id, error: (e as Error).message });
+        sink.send('ideas', { ideas: [], lowSupply: true });
+      }
+      sink.send('done', { counts: { ideas: ideas.length }, durationMs: Date.now() - started });
     }
+
+    const durationMs = Date.now() - started;
+    await svc.jev
+      .recordSearch({ tokens: usage.tokens, requests: usage.requests, degraded: Boolean(degraded) })
+      .catch((e) => log.warn({ event: 'jev.usage_not_recorded', error: (e as Error).message }));
 
     log.info({
       event: 'search',
@@ -160,7 +192,8 @@ export async function handleSearch(req: Request, svc: Services): Promise<Respons
       searchId: id,
       durationMs,
       degraded: Boolean(degraded),
-      tokens: outcome.usage.tokens,
+      tokens: usage.tokens,
+      ideas: ideas.length,
     });
     if (!persisted) return;
     try {
@@ -168,10 +201,11 @@ export async function handleSearch(req: Request, svc: Services): Promise<Respons
         status,
         features: outcome.kind === 'features' ? outcome.profile : null,
         degraded: Boolean(degraded),
-        jevTokens: outcome.usage.tokens,
+        jevTokens: usage.tokens,
         durationMs,
-        stageMs: { S1: durationMs },
+        stageMs,
       });
+      if (ideas.length) await svc.store.saveIdeas(id, ideas);
       if (status === 'done') {
         await svc.store.cachePut(
           key,
@@ -205,6 +239,7 @@ export async function handleSnapshot(ref: string, svc: Services): Promise<Respon
     expiresAt: rec.expiresAt,
     profile: rec.features,
     results: [],
+    ideas: await svc.store.getIdeas(rec.id).catch(() => []),
     degraded: rec.degraded,
   });
 }

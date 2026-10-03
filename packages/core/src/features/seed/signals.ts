@@ -314,7 +314,19 @@ export const SAFETY_PATTERNS = {
   refuse: [
     // Intent, not topic: "a blog that teaches people to spot phishing" must stay allowed.
     /\b(steal\w*|harvest\w*|collect\w*|captur\w*|grab\w*)\s+(\w+\s+){0,3}(password|credential|login|card number|otp|pin)s?\b/i,
-    /\b(phishing|scam)\s+(page|site|kit|website)\b(?!.{0,40}\b(awareness|spot|avoid|detect|protect|report))/i,
+    /\b(phishing|scam)\s+(page|site|kit|website|operation|business|ring|campaign)\b(?!.{0,40}\b(awareness|spot|avoid|detect|protect|report))/i,
+    // Harm to children, trafficking, stolen goods, identity theft, forged papers, hate platforms, gambling for minors.
+    // Protective wording ("report child abuse material", "drug trafficking lawyer") stays allowed.
+    /(?<!\b(protect\w*|prevent\w*|against|stop\w*|fight\w*|combat\w*|report\w*|detect\w*|remov\w*)\b.{0,30})\b(child|children|minors?|underage|kids?)\b.{0,30}\b(porn\w*|nudes?|(exploitation|abuse|explicit|sexual)\s+(material|content|images|videos|photos))\b/i,
+    /\b(porn\w*|nudes?|explicit|sexual)\s+(\w+\s+){0,2}(of|with|featuring|involving)\s+(\w+\s+)?(child|children|minors?|underage|kids?)\b/i,
+    /(?<!\b(anti|against|prevent\w*|stop\w*|fight\w*|combat\w*|ending|end)\W{1,3})\b(weapons?|arms|firearms?|guns?|drugs?)\s+(trafficking|smuggling)\b(?!\s+(prevention|awareness|survivors?|victims?|research|laws?|lawyers?|attorneys?|defen[cs]e|news|statistics|data|history|documentar\w*))/i,
+    /\b(illegal|illicit)\s+(drugs?|narcotics|weapons?|firearms?)\s+(marketplace|market|shop|store|platform|site)\b/i,
+    /\bstolen\s+(goods|items|cars?|phones?|property|bikes?|data)\s+(marketplace|market|shop|store|platform|site)\b/i,
+    /\bidentity\s+theft\s+(service|kit|tools?|shop|platform)\b/i,
+    /\b(counterfeit|fake|forged)\s+(documents?|passports?|id cards?|ids|driving licen[cs]es?|diplomas?|degrees?|certificates?)\s+(service|shop|store|seller|vendor|maker|platform)s?\b/i,
+    /\bhate\s+(speech|group)\s+(platform|site|forum|website|community|network)\b/i,
+    /\b(gambling|betting|casino|porn\w*|adult)\s+(sites?|apps?|games?|platforms?|websites?|services?|content|club)\s+for\s+(minors|kids|children|teens|teenagers|underage)\b/i,
+    /\bsell\w*\s+(alcohol|vapes?|cigarettes|tobacco)\s+to\s+(minors|kids|children|teens|teenagers|underage)\b/i,
     /\b(fake|clone[ds]?|copy|replica|lookalike|look[- ]alike)\b.{0,40}\b(login|log-in|sign[- ]in|bank|paypal|wallet)\b/i,
     /\blooks?\s+(just\s+)?like\s+(my\s+|the\s+)?\w+'?s?\s+(bank|login|website)\b/i,
     // Selling or doing it, not talking about it ("a museum about counterfeit money" is fine).

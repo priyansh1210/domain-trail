@@ -34,7 +34,7 @@ export default tseslint.config(
     settings: { next: { rootDir: 'apps/web' } },
   },
   {
-    files: ['scripts/**/*.mjs'],
+    files: ['scripts/**/*.mjs', 'packages/*/scripts/**/*.mts'], // command-line tools print to the terminal
     rules: { 'no-console': 'off' },
   },
 );
