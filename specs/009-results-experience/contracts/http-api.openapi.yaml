@@ -184,6 +184,16 @@ paths:
                   jevBreaker: { type: string, enum: [closed, open] }
                   version: { type: string, description: git SHA }
                   mode: { type: string, enum: [live, mock], description: 'mock = MOCK_EXTERNALS=1; db/upstash then report the in-process mocks' }
+                  data:
+                    type: object
+                    description: Freshness of the public data this server instance reads (FR-PRC-011, FR-UX-011)
+                    properties:
+                      pricesAt: { type: string, format: date-time }
+                      fxAsOf: { type: string, format: date }
+                      publicData: { type: string, enum: [live, fixture] }
+                      priceRefresh: { type: string, enum: [ok, failed, not_yet] }
+                      priceRefreshNote: { type: string, description: Public URL and status of a failed refresh }
+                      rdapDirectory: { type: string, description: Publication time of the IANA RDAP directory in use }
   /webhooks/resend:
     post:
       tags: [account]
