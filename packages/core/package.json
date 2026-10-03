@@ -17,6 +17,7 @@
     "@domains-all/config": "workspace:*",
     "@domains-all/jev": "workspace:*",
     "@domains-all/log": "workspace:*",
+    "transliteration": "^2.6.1",
     "uuidv7": "^1.2.1",
     "wink-eng-lite-web-model": "^1.8.1",
     "wink-nlp": "^2.4.0",

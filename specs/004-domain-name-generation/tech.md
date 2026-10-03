@@ -137,6 +137,8 @@ spellClarity     = 1 − penalties (ambiguous homophones: 'ph' vs 'f', 'c/k', 'z
 cleanChars       = 1 − 0.5·hasHyphen − 0.5·hasDigit
 keywordCoverage K= Σ w(t) for core terms t present in segments (capped at 1)
 ```
+Calibration note (2026-10-03): the weighted sum is multiplied by `min(1, 0.4 + pronounceability)`. Without it, a
+letter string such as "brdxq" scored 0.51 on length and clean characters alone and passed the 0.35 cut-off.
 
 ## 6. External services and free-tier limits
 
