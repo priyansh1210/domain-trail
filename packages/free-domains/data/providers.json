@@ -1,0 +1,161 @@
+{
+  "reviewedAt": "2026-10-04",
+  "source": "docs/research.md R-08",
+  "providers": [
+    {
+      "id": "is-a-dev",
+      "name": "is-a.dev",
+      "suffix": "is-a.dev",
+      "kind": "subdomain_service",
+      "eligibility": {
+        "anyFlags": ["feat_developer"],
+        "anySiteTypes": ["docs_open_source"],
+        "excludeFlags": ["feat_sells_physical", "feat_sells_digital", "feat_subscription", "feat_marketplace"],
+        "note": "Personal sites and projects of developers, not businesses"
+      },
+      "steps": [
+        "Fork the is-a-dev/register repository on GitHub",
+        "Add a file domains/{label}.json with your DNS records",
+        "Open a pull request and wait for a maintainer to approve it"
+      ],
+      "waitTime": "Usually a few days (pull request review)",
+      "officialUrl": "https://is-a.dev",
+      "checkMethod": "github_list",
+      "checkConfig": {
+        "format": "tree",
+        "url": "https://api.github.com/repos/is-a-dev/register/git/trees/main?recursive=1",
+        "prefix": "domains/",
+        "ext": ".json"
+      },
+      "healthy": true
+    },
+    {
+      "id": "js-org",
+      "name": "js.org",
+      "suffix": "js.org",
+      "kind": "subdomain_service",
+      "eligibility": {
+        "allFlags": ["feat_developer"],
+        "anyFlags": ["feat_docs"],
+        "anySiteTypes": ["docs_open_source"],
+        "note": "JavaScript open-source projects only"
+      },
+      "steps": [
+        "Host your project on GitHub Pages",
+        "Add a CNAME file containing {label}.js.org",
+        "Open a pull request adding {label} to cnames_active.js in js-org/js.org"
+      ],
+      "waitTime": "Usually a few days (pull request review)",
+      "officialUrl": "https://js.org",
+      "checkMethod": "github_list",
+      "checkConfig": {
+        "format": "js_keys",
+        "url": "https://raw.githubusercontent.com/js-org/js.org/master/cnames_active.js"
+      },
+      "healthy": true
+    },
+    {
+      "id": "eu-org",
+      "name": "eu.org",
+      "suffix": "eu.org",
+      "kind": "community_registry",
+      "eligibility": { "note": "Anyone; free for good, but you need two working DNS servers" },
+      "steps": [
+        "Create an account at nic.eu.org",
+        "Request {label}.eu.org and name two DNS servers that already answer for it",
+        "Wait for a volunteer to approve the request"
+      ],
+      "waitTime": "Weeks to months (manual approval)",
+      "officialUrl": "https://nic.eu.org",
+      "checkMethod": "doh",
+      "checkConfig": { "type": "NS" },
+      "healthy": true
+    },
+    {
+      "id": "pp-ua",
+      "name": "pp.ua",
+      "suffix": "pp.ua",
+      "kind": "community_registry",
+      "eligibility": { "note": "Anyone with a mobile phone number for SMS confirmation" },
+      "steps": [
+        "Register {label}.pp.ua at a registrar that offers it for free",
+        "Confirm the registration by SMS within 14 days"
+      ],
+      "waitTime": "Minutes, once the SMS is confirmed",
+      "officialUrl": "https://pp.ua",
+      "checkMethod": "doh",
+      "checkConfig": { "type": "NS" },
+      "healthy": true
+    },
+    {
+      "id": "dpdns",
+      "name": "DigitalPlat (dpdns.org)",
+      "suffix": "dpdns.org",
+      "kind": "community_registry",
+      "eligibility": { "note": "Anyone; identity verification required" },
+      "steps": [
+        "Create a DigitalPlat FreeDomain account and complete verification",
+        "Register {label}.dpdns.org and point it to your DNS provider (for example Cloudflare)"
+      ],
+      "waitTime": "Minutes to a day",
+      "officialUrl": "https://domain.digitalplat.org",
+      "checkMethod": "doh",
+      "checkConfig": { "type": "NS" },
+      "healthy": true
+    },
+    {
+      "id": "cf-pages",
+      "name": "Cloudflare Pages",
+      "suffix": "pages.dev",
+      "kind": "platform_address",
+      "eligibility": { "note": "Static sites and front-end apps hosted on Cloudflare Pages" },
+      "steps": ["Create a Cloudflare Pages project named {label}", "Deploy your site"],
+      "waitTime": "Instant",
+      "officialUrl": "https://pages.cloudflare.com",
+      "checkMethod": "doh",
+      "checkConfig": { "type": "A" },
+      "healthy": true
+    },
+    {
+      "id": "vercel-app",
+      "name": "Vercel",
+      "suffix": "vercel.app",
+      "kind": "platform_address",
+      "eligibility": { "note": "Any web app; the free Hobby plan is for non-commercial use" },
+      "steps": ["Create a Vercel project named {label}", "Deploy your site"],
+      "waitTime": "Instant",
+      "officialUrl": "https://vercel.com",
+      "checkMethod": "none",
+      "healthy": true
+    },
+    {
+      "id": "netlify-app",
+      "name": "Netlify",
+      "suffix": "netlify.app",
+      "kind": "platform_address",
+      "eligibility": { "note": "Static sites and front-end apps hosted on Netlify" },
+      "steps": ["Create a Netlify site", "Rename it to {label} in the site settings"],
+      "waitTime": "Instant",
+      "officialUrl": "https://www.netlify.com",
+      "checkMethod": "none",
+      "healthy": true
+    },
+    {
+      "id": "github-io",
+      "name": "GitHub Pages",
+      "suffix": "github.io",
+      "kind": "platform_address",
+      "eligibility": {
+        "note": "The name must be your GitHub username or organisation; GitHub Pages is not meant for commercial sites"
+      },
+      "steps": [
+        "Create a GitHub account or organisation named {label}",
+        "Create a repository called {label}.github.io and publish your site from it"
+      ],
+      "waitTime": "Instant",
+      "officialUrl": "https://pages.github.com",
+      "checkMethod": "none",
+      "healthy": true
+    }
+  ]
+}
