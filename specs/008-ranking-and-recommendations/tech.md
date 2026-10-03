@@ -203,3 +203,7 @@ Distribution of S per section, exclusion counts (brand/negative), reasons freque
   renewal-warning penalties (−0.05 each) and the `value` reason are applied in `packages/core/src/pipeline/verify.ts`
   after availability and price are known. Section order and variety use `orderSection` (≤ 3 per name, ≤ 40 % per style
   on the first page of 20, topped up in score order when too few styles exist).
+- **Anchor extensions (2026-10-04):** every name is also paired with `.com` and the first local extension of the detected
+  region (for example `.in` for India), next to its six best fits. Without this, a bakery in Pune got no `.com` or `.in`
+  at all when six food extensions fitted better, and all checks queued at one registry.
+- **Unconfirmed names** fill a section's first page only when there are fewer than 20 confirmed ones.

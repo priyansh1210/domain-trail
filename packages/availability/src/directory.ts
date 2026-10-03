@@ -1,6 +1,7 @@
 // Which registry answers RDAP for an extension (spec 005 tech §5.2, research R-03). The IANA bootstrap file lists
 // one base URL per TLD; second-level extensions (`co.in`, `com.au`) are answered by their parent's registry.
 import { availability } from '@domains-all/config/defaults';
+import { timedFetch } from '@domains-all/config/net';
 import snapshot from '../data/rdap-directory.json';
 
 export const IANA_RDAP_URL = 'https://data.iana.org/rdap/dns.json';
@@ -56,9 +57,9 @@ export function createDirectorySource(opts: { live: boolean; fetchFn?: typeof fe
   function refresh(): void {
     if (inFlight || now() - fetchedAt < maxAge) return;
     fetchedAt = now(); // one attempt per window, even if it fails
-    inFlight = (opts.fetchFn ?? fetch)(IANA_RDAP_URL, { signal: AbortSignal.timeout(10_000) })
-      .then(async (res) => {
-        if (res.ok) current = RdapDirectory.fromIana(await res.json());
+    inFlight = timedFetch(IANA_RDAP_URL, { timeoutMs: 10_000, maxBytes: 2_000_000, fetchFn: opts.fetchFn })
+      .then((res) => {
+        if (res?.ok && res.text) current = RdapDirectory.fromIana(JSON.parse(res.text));
       })
       .catch(() => undefined) // keep the previous copy
       .finally(() => {

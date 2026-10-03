@@ -239,3 +239,7 @@ any host 429-rate > 30%, accuracy report below target (spec 015).
 - **Accuracy check** (§5.6): `pnpm eval:availability` / `monthly-availability-accuracy.yml` samples names generated for
   the golden examples (stratified by extension) rather than the last 7 days of `domain_checks`, so it works before
   Supabase is in use; it uses Porkbun's bulk `checkDomain` (25 per call, 200 per minute).
+- **Hard time limits (2026-10-04):** on the production host some requests stayed open after their abort signal, and a
+  search never sent `done`. Every outbound request now goes through `timedFetch` (`@domains-all/config/net`), which
+  settles at its limit whatever the runtime does; the free-name stage, each free check (4 s) and the shared-cache
+  calls (1.5 s read, 2 s write) are bounded with `within`.

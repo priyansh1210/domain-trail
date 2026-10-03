@@ -47,7 +47,7 @@ function world(
       );
     }
     const fqdn = decodeURIComponent(url.pathname.split('/domain/')[1]!);
-    if (opts.slow?.includes(fqdn)) await new Promise((r) => setTimeout(r, 300));
+    if (opts.slow?.includes(fqdn)) await new Promise((r) => setTimeout(r, 180)); // after the deadline, within the request limit
     if (opts.rdapDown?.includes(fqdn)) return new Response('', { status: 503 });
     if (opts.rdapTaken?.includes(fqdn)) return Response.json({ status: ['active'] });
     return new Response('', { status: 404 });
@@ -117,7 +117,7 @@ describe('checkMany', () => {
     const cache = new MemoryAvailabilityCache();
     const w = world({ rdapDown: ['broken.com'], slow: ['slow.com'] });
     const { results, stats } = await checker(w.fetchFn, { cache }).checkMany(['broken.com', 'slow.com'], {
-      deadline: Date.now() + 150,
+      deadline: Date.now() + 100,
     });
     expect(results.map((r) => r.status)).toEqual(['unknown', 'unknown']);
     expect(stats.late).toBe(1);

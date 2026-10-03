@@ -150,6 +150,32 @@ describe('verify stage', () => {
     expect(firstPage).toEqual(expect.arrayContaining(['n25.com', 'n29.com']));
   });
 
+  it('shows unconfirmed names only to fill the first page', () => {
+    const confirmed = (n: number) =>
+      Array.from(
+        { length: n },
+        (_, i) =>
+          ({
+            fqdn: `c${i}.com`,
+            label: `c${i}`,
+            strategy: `s${i % 5}`,
+            status: 'available',
+            score: 0.9 - i / 1000,
+          }) as ResultItem,
+      );
+    const unknown = Array.from(
+      { length: 5 },
+      (_, i) =>
+        ({ fqdn: `u${i}.com`, label: `u${i}`, strategy: 'x', status: 'unknown', score: 0.5 }) as ResultItem,
+    );
+    expect(orderSection([...confirmed(25), ...unknown]).filter((f) => f.startsWith('u'))).toEqual([]);
+    expect(orderSection([...confirmed(17), ...unknown]).filter((f) => f.startsWith('u'))).toEqual([
+      'u0.com',
+      'u1.com',
+      'u2.com',
+    ]);
+  });
+
   it('scores price value within each section', () => {
     expect(priceValue('budget', 1)).toBe(1);
     expect(priceValue('budget', 10_000)).toBe(0);

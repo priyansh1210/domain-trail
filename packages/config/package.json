@@ -6,7 +6,8 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./defaults": "./src/defaults.ts"
+    "./defaults": "./src/defaults.ts",
+    "./net": "./src/net.ts"
   },
   "scripts": {
     "typecheck": "tsc",

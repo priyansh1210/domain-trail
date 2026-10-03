@@ -1,6 +1,7 @@
 // Authoritative registry answer over RDAP (spec 005 tech §5.2; FR-AVL-001, 003, 007). Only status and dates are
 // read — registrant data is never stored (tech §9). Responses are size-limited and parsed defensively.
 import { availability } from '@domains-all/config/defaults';
+import { timedFetch } from '@domains-all/config/net';
 
 export type RdapStatus = 'available' | 'taken' | 'dropping_soon' | 'unknown';
 
@@ -25,13 +26,6 @@ export interface RdapOptions {
 }
 
 const DROPPING = ['pending delete', 'redemption period'];
-
-async function readLimited(res: Response, maxBytes: number): Promise<string | undefined> {
-  const declared = Number(res.headers.get('content-length'));
-  if (Number.isFinite(declared) && declared > maxBytes) return undefined;
-  const text = await res.text();
-  return text.length > maxBytes ? undefined : text;
-}
 
 /** Classifies a 200 response: dropping soon when the registry says it is being deleted, otherwise taken. */
 export function classifyRecord(text: string | undefined): {
@@ -61,14 +55,15 @@ export async function rdapLookup(fqdn: string, baseUrl: string, opts: RdapOption
   const url = `${baseUrl}domain/${encodeURIComponent(fqdn)}`;
   for (let attempt = 0; attempt < 2; attempt++) {
     opts.onRequest?.();
-    let res: Response;
-    try {
-      res = await (opts.fetchFn ?? fetch)(url, {
-        headers: { accept: 'application/rdap+json, application/json', 'user-agent': opts.userAgent },
-        redirect: 'follow',
-        signal: AbortSignal.timeout(opts.timeoutMs ?? availability.rdapTimeoutMs),
-      });
-    } catch {
+    const res = await timedFetch(url, {
+      headers: { accept: 'application/rdap+json, application/json', 'user-agent': opts.userAgent },
+      redirect: 'follow',
+      timeoutMs: opts.timeoutMs ?? availability.rdapTimeoutMs,
+      maxBytes: opts.maxBytes ?? availability.rdapMaxBytes,
+      fetchFn: opts.fetchFn,
+    });
+    if (!res) {
+      // network error or timeout: one retry, then unknown
       if (attempt === 0) {
         await sleep(500);
         continue;
@@ -76,10 +71,7 @@ export async function rdapLookup(fqdn: string, baseUrl: string, opts: RdapOption
       return { status: 'unknown' };
     }
     if (res.status === 404) return { status: 'available', httpStatus: 404 };
-    if (res.ok) {
-      const record = classifyRecord(await readLimited(res, opts.maxBytes ?? availability.rdapMaxBytes));
-      return { ...record, httpStatus: res.status };
-    }
+    if (res.ok) return { ...classifyRecord(res.text), httpStatus: res.status };
     if (res.status === 429) {
       const wait = Number(res.headers.get('retry-after'));
       if (attempt === 0 && Number.isFinite(wait) && wait <= availability.rdapRetryAfterMaxSeconds) {

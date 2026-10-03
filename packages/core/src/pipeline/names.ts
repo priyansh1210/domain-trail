@@ -17,6 +17,7 @@ import type { Preferences } from '../intake/schema';
 import { rankRound1, rankRound2 } from '../ranking/rounds';
 import { pair, toIdeas, type Idea, type Pair } from '../ranking/score';
 import { buildTldPool } from '../ranking/tld-pool';
+import { GEO_TLDS } from '../ranking/tlds';
 import { brandTokensIn } from '../safety/brand-risk';
 import type { StageUsage } from './s1';
 
@@ -172,6 +173,7 @@ export async function runNames(ctx: NamesContext): Promise<NamesOutcome> {
   const pairs = pair(r2.items, r2.tldFit, {
     preferredTlds: ctx.preferences.preferredTlds,
     bandTlds: ctx.bandTlds?.(pool),
+    anchors: ['com', ...(GEO_TLDS[ctx.profile.geo.value] ?? []).slice(0, 1)],
   });
   const ideas = toIdeas(pairs, { coreTerms: gen.weights, flagsOn, geo: ctx.profile.geo.value });
 

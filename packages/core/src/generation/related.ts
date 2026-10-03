@@ -1,5 +1,6 @@
 // Stage S2b: related words (spec 004 tech §5.3; FR-GEN-003, FR-GEN-018, NFR-GEN-002). Datamuse in live mode, with a
 // 30-day cache; the offline WordNet data otherwise or when Datamuse is slow or down. Only single words are sent.
+import { timedFetch } from '@domains-all/config/net';
 import { commonness, isWord, PROFANITY, relatedOffline } from './lexicon';
 import { brandRisk } from '../safety/brand-risk';
 import type { WeightedTerm } from './terms';
@@ -80,14 +81,18 @@ async function datamuse(
   max: number,
   opts: RelatedOptions,
 ): Promise<string[] | null> {
+  const url = `https://api.datamuse.com/words?${param}=${encodeURIComponent(term)}&max=${max}`;
+  const res = await timedFetch(url, {
+    timeoutMs: opts.timeoutMs ?? 1500,
+    maxBytes: 256 * 1024,
+    fetchFn: opts.fetchFn,
+  });
+  if (!res?.ok || !res.text) return null; // no retry: latency matters more (tech §8)
   try {
-    const url = `https://api.datamuse.com/words?${param}=${encodeURIComponent(term)}&max=${max}`;
-    const res = await (opts.fetchFn ?? fetch)(url, { signal: AbortSignal.timeout(opts.timeoutMs ?? 1500) });
-    if (!res.ok) return null;
-    const json = (await res.json()) as Array<{ word?: unknown }>;
+    const json = JSON.parse(res.text) as Array<{ word?: unknown }>;
     return json.map((x) => String(x.word ?? '')).filter(Boolean);
   } catch {
-    return null; // no retry: latency matters more (tech §8)
+    return null;
   }
 }
 

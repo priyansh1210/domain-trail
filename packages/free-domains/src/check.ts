@@ -2,6 +2,7 @@
 // taken names (fetched at most every 12 hours per server), a DNS lookup where the suffix has no wildcard, or
 // "not verifiable". Research R-08 lists which provider uses which.
 import { availability } from '@domains-all/config/defaults';
+import { timedFetch } from '@domains-all/config/net';
 import { dohQuery, fixtureTaken, nsVerdict, resolves } from '@domains-all/availability';
 import type { FreeProvider } from './providers';
 
@@ -43,11 +44,13 @@ export function createFreeChecker(opts: { live: boolean; fetchFn?: typeof fetch;
     const entry = lists.get(p.id);
     if (entry?.taken && now() - entry.at < maxAge) return entry.taken;
     if (entry?.loading) return entry.loading;
-    const loading = (opts.fetchFn ?? fetch)(cfg.url, {
+    const loading = timedFetch(cfg.url, {
       headers: { accept: cfg.format === 'tree' ? 'application/vnd.github+json' : 'text/plain' },
-      signal: AbortSignal.timeout(8000),
+      timeoutMs: 8000,
+      maxBytes: 20_000_000,
+      fetchFn: opts.fetchFn,
     })
-      .then(async (res) => (res.ok ? parseTakenList(cfg.format!, await res.text(), cfg) : undefined))
+      .then((res) => (res?.ok && res.text ? parseTakenList(cfg.format!, res.text, cfg) : undefined))
       .catch(() => undefined);
     lists.set(p.id, { ...entry, at: entry?.at ?? 0, loading });
     const taken = await loading;

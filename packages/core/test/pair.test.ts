@@ -2,7 +2,7 @@
 // NFR-RANK-003). Pairing and scoring share fixtures, so they live together.
 import { describe, expect, it } from 'vitest';
 import type { Ranked } from '../src/ranking/rounds';
-import { finalScore, MAX_FQDNS, pair, reasonsFor, toIdeas, WEIGHTS } from '../src/ranking/score';
+import { fairOrder, finalScore, MAX_FQDNS, pair, reasonsFor, toIdeas, WEIGHTS } from '../src/ranking/score';
 
 const ranked = (label: string, over: Partial<Ranked> = {}): Ranked => ({
   label,
@@ -32,6 +32,34 @@ describe('pairing (FR-RANK-005)', () => {
     expect(fqdns).toEqual(expect.arrayContaining(['loafly.shop', 'loafly.cafe', 'loafly.in', 'cak.es']));
     expect(fqdns).not.toContain('loafly.xyz');
     expect(pairs.find((p) => p.fqdn === 'cak.es')!.T).toBe(1);
+  });
+
+  it('always offers .com and the local extension next to the best fits', () => {
+    const fits = new Map([
+      ['cafe', 1],
+      ['kitchen', 0.95],
+      ['menu', 0.9],
+      ['com', 0.6],
+      ['in', 0.4],
+    ]);
+    const fqdns = pair([ranked('loafly')], fits, {
+      preferredTlds: [],
+      perLabel: 2,
+      anchors: ['com', 'in'],
+    }).map((p) => p.fqdn);
+    expect(fqdns.sort()).toEqual(['loafly.cafe', 'loafly.com', 'loafly.in', 'loafly.kitchen']);
+  });
+
+  it("takes extensions in turn, so a cap keeps every extension's best names", () => {
+    const fits = new Map([
+      ['cafe', 1],
+      ['menu', 0.95],
+      ['com', 0.6],
+    ]);
+    const pairs = pair([ranked('a', { R: 0.9 }), ranked('b', { R: 0.8 })], fits, { preferredTlds: [] });
+    const order = fairOrder(pairs, (p) => p.ranked.R * p.T).map((p) => p.fqdn);
+    expect(order.slice(0, 3)).toEqual(['a.cafe', 'a.menu', 'a.com']);
+    expect(order.slice(3)).toEqual(['b.cafe', 'b.menu', 'b.com']);
   });
 
   it('caps the total at 300 pairs, keeping the strongest', () => {
