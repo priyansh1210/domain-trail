@@ -42,6 +42,7 @@ packages/jev
 |---|---|---|
 | Endpoint (direct) | `POST https://api.typesafe.ai/v1/systemone` | flaviocopes.com/jev-api-key |
 | Endpoint (gateway) | `POST https://ai-gateway.vercel.sh/typesafe/v1/systemone` | flaviocopes.com/jev-api-key |
+| Endpoint (ngrok) | `POST https://gateway.ngrok.ai/v1/systemone` (TypeSafe names and shapes, pinned `jev-1.13.0`; `JEV_ROUTE=ngrok`, `NGROK_AI_API_KEY`). Vercel's gateway answers 403 `customer_verification_required` until a card is on file | ngrok.com/changelog/ai-gateway-typesafe-jev (2026-10-04) |
 | Models endpoint | `GET /v1/models` (gateway: `GET /typesafe/v1/models`) | same |
 | Model name on the gateway | `maker/model`, e.g. `typesafe-ai/jev`; the transport sends `typesafe-ai/<JEV_MODEL>` and strips the prefix from responses. Errors: `{ message, error_type }` | vercel.com/docs/ai-gateway/sdks-and-apis/typesafe (2026-10-04) |
 | Auth | `Authorization: Bearer <key>` (`TYPESAFE_API_KEY` or `AI_GATEWAY_API_KEY`) | same |

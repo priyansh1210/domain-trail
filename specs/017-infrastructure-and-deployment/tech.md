@@ -50,6 +50,7 @@ N/A (infrastructure). Backups: spec 012 §5.4.
 | `SUPABASE_DB_URL` | Actions | jobs, migrations, backups | 010, 012 |
 | `AI_GATEWAY_API_KEY` | server, Actions | Jev | 002 |
 | `TYPESAFE_API_KEY` | server (optional) | Jev direct route | 002 |
+| `NGROK_AI_API_KEY` | server, Actions (optional) | Jev via ngrok.ai (`JEV_ROUTE=ngrok`) | 002 |
 | `JEV_ROUTE`, `JEV_MODEL`, `JEV_*` caps | server, Actions | Jev | 002 |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | server | limits, caps | 014 |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | public / server | human check | 001, 014 |
@@ -76,7 +77,9 @@ N/A (infrastructure). Backups: spec 012 §5.4.
 ### 5.1 Account setup order (FR-INF-011, 013) — step-by-step guide `docs/setup.md` (created at implementation)
 1. GitHub account (2FA) → create repository → branch protection on `main` (required checks: ci, security; linear history).
 2. Vercel (sign in with GitHub, 2FA) → import repo → root `apps/web` → Node 22 → function region `bom1`.
-3. Vercel AI Gateway → create API key → verify `typesafe-ai/jev` is available → store `AI_GATEWAY_API_KEY`.
+3. Vercel AI Gateway → create API key → verify `typesafe-ai/jev` is available → store `AI_GATEWAY_API_KEY`. Vercel serves
+   requests only with a card on file (verification; prepaid credits, nothing charged without a purchase). Without a
+   card: ngrok.ai key → `NGROK_AI_API_KEY` with `JEV_ROUTE=ngrok` (research R-15).
 4. Supabase (2FA) → project in `ap-south-1` → copy URL/anon/service keys + pooler DB URL → enable Google & GitHub providers.
 5. Google Cloud console → OAuth client (free) · GitHub → OAuth app → paste into Supabase.
 6. Upstash (2FA) → Redis database (free) → REST URL/token.

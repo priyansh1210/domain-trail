@@ -6,6 +6,7 @@ import type { SystemOneRequest, SystemOneResponse } from './types';
 export const ROUTES = {
   gateway: 'https://ai-gateway.vercel.sh/typesafe/v1/systemone',
   direct: 'https://api.typesafe.ai/v1/systemone',
+  ngrok: 'https://gateway.ngrok.ai/v1/systemone', // same names and shapes as TypeSafe's own API
 } as const;
 
 export type Route = keyof typeof ROUTES;
