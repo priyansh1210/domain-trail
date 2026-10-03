@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Milestone | M1 (roadmap) |
-| Exit criterion | preview deployment answers `GET /api/health` |
+| Exit criterion | preview deployment answers `GET /api/health` — **met 2026-10-03** |
 | Specs | 000, 012, 013 (baseline), 016 (CI), 017 |
 | Started | 2026-10-03 |
 
@@ -11,7 +11,7 @@ Status: ☐ open · ◐ in progress · ☑ done · ⏸ waiting for the owner
 
 Verified locally on 2026-10-03: `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test` (42 tests),
 `pnpm trace:check`, `pnpm build`, and `next start` → `GET /api/health` = 200 `{ok:true, mode:"mock"}` with the
-security headers. E2 (real Supabase stack in CI) is written but first runs on GitHub — Docker was not running here.
+security headers. E2 (real Supabase stack) passed on GitHub Actions run 37129595327 (2026-10-03).
 
 ## A. Repository and tooling (spec 000 §3, 017 §5.4)
 | # | Task | Requirement | Status |
@@ -48,7 +48,7 @@ security headers. E2 (real Supabase stack in CI) is written but first runs on Gi
 | # | Task | Requirement | Status |
 |---|---|---|---|
 | E1 | `ci.yml`: install → lint → typecheck → unit tests → build; `trace:check` (report-only) | FR-QA-002 | ☑ |
-| E2 | `ci.yml` job `db`: Supabase CLI local stack applies all migrations (real Supabase, complements D3) | FR-DATA-007 | ◐ |
+| E2 | `ci.yml` job `db`: Supabase CLI local stack applies all migrations (real Supabase, complements D3) | FR-DATA-007 | ☑ |
 | E3 | `security.yml`: gitleaks + CodeQL (free on public repos) | FR-PRIV-013, FR-INF-014 | ☑ |
 | E4 | `migrate.yml`: `supabase db push` on `main`, gated by the `production` environment (owner approval) | FR-INF-004 | ☑ |
 | E5 | `scripts/trace-check.mjs`: every FR/NFR ID present once in its tech matrix | FR-QA-001 | ☑ |
@@ -57,7 +57,7 @@ security headers. E2 (real Supabase stack in CI) is written but first runs on Gi
 | # | Task | Status |
 |---|---|---|
 | F1 | Create the public GitHub repository and push (`docs/setup.md` step 1) — github.com/priyansh1210/domain-trail | ☑ |
-| F2 | Import the repo into Vercel (root `apps/web`, region `bom1`) → first preview deploy → open `/api/health` | ⏸ |
+| F2 | Import the repo into Vercel (root `apps/web`, region `bom1`) → first deploy → open `/api/health` — https://domain-trail.vercel.app/api/health returned 200 `{ok:true, mode:"mock", version:"0e3dc715da64"}` (2026-10-03) | ☑ |
 | F3 | Create the Supabase project in Mumbai (`ap-south-1`) and enable Google/GitHub + anonymous sign-ins | ⏸ |
 
 ## Not in M1 (later milestones)
