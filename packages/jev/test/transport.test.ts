@@ -1,6 +1,6 @@
 // Spec 002 tech §11 `transport.test.ts` (FR-JEV-005, 006, 010, 011).
 import { describe, expect, it, vi } from 'vitest';
-import { createHttpTransport, ROUTES, wireModel } from '../src/transport';
+import { createHttpTransport, ROUTES, wireModel, type Route } from '../src/transport';
 import type { SystemOneRequest } from '../src/types';
 
 const body: SystemOneRequest = {
@@ -21,7 +21,7 @@ const ok = () =>
     },
   );
 
-function setup(responses: Array<() => Response | Promise<Response>>) {
+function setup(responses: Array<() => Response | Promise<Response>>, route: Route = 'gateway') {
   let t = 0;
   const calls: Array<{ url: string; init: RequestInit }> = [];
   const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
@@ -32,7 +32,7 @@ function setup(responses: Array<() => Response | Promise<Response>>) {
   }) as unknown as typeof fetch;
   const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const transport = createHttpTransport({
-    route: 'gateway',
+    route,
     apiKey: 'key-123',
     fetchFn,
     now: () => t,
@@ -89,6 +89,13 @@ describe('http transport', () => {
       error: 'invalid',
     });
     expect(b.calls).toHaveLength(1);
+  });
+
+  it('reaches Jev through ngrok.ai with TypeSafe model names', async () => {
+    const { transport, calls } = setup([ok], 'ngrok');
+    expect(await transport.send(body, { deadline: 10_000, searchId: 's' })).toMatchObject({ ok: true });
+    expect(calls[0]!.url).toBe('https://gateway.ngrok.ai/v1/systemone');
+    expect(JSON.parse(String(calls[0]!.init.body)).model).toBe('jev-1.13.0');
   });
 
   it('uses AI Gateway model names on the gateway route and TypeSafe names elsewhere', async () => {

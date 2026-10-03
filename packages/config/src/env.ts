@@ -37,7 +37,8 @@ export const serverEnvSchema = publicEnvSchema
 
     AI_GATEWAY_API_KEY: z.string().optional(),
     TYPESAFE_API_KEY: z.string().optional(),
-    JEV_ROUTE: z.enum(['gateway', 'direct']).default('gateway'),
+    NGROK_AI_API_KEY: z.string().optional(),
+    JEV_ROUTE: z.enum(['gateway', 'direct', 'ngrok']).default('gateway'),
     // FR-JEV-003: production uses a pinned version, never a moving alias such as "latest".
     JEV_MODEL: z
       .string()
@@ -138,6 +139,15 @@ export function serverEnv(): ServerEnv {
   return cached;
 }
 
+/** The Jev API key variable for the chosen route (spec 002 tech §5.2): name and value. */
+export function jevKey(
+  env: Pick<ServerEnv, 'JEV_ROUTE' | 'AI_GATEWAY_API_KEY' | 'TYPESAFE_API_KEY' | 'NGROK_AI_API_KEY'>,
+): [string, string | undefined] {
+  if (env.JEV_ROUTE === 'gateway') return ['AI_GATEWAY_API_KEY', env.AI_GATEWAY_API_KEY];
+  if (env.JEV_ROUTE === 'ngrok') return ['NGROK_AI_API_KEY', env.NGROK_AI_API_KEY];
+  return ['TYPESAFE_API_KEY', env.TYPESAFE_API_KEY];
+}
+
 /** Names of variables that live mode (MOCK_EXTERNALS=0) still needs. Used by /api/health and startup logs. */
 export function missingForLive(env: ServerEnv): string[] {
   const required: Array<[string, unknown]> = [
@@ -150,9 +160,7 @@ export function missingForLive(env: ServerEnv): string[] {
     ['TURNSTILE_SECRET_KEY', env.TURNSTILE_SECRET_KEY],
     ['SEARCH_LINK_SECRET', env.SEARCH_LINK_SECRET],
     ['VISITOR_SALT_SECRET', env.VISITOR_SALT_SECRET],
-    env.JEV_ROUTE === 'gateway'
-      ? ['AI_GATEWAY_API_KEY', env.AI_GATEWAY_API_KEY]
-      : ['TYPESAFE_API_KEY', env.TYPESAFE_API_KEY],
+    jevKey(env),
   ];
   if (env.EMAIL_MODE === 'on') {
     required.push(

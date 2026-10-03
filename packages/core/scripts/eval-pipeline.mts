@@ -4,7 +4,7 @@
 // when the real Jev is not configured or never answered, so a broken connection cannot pass for a real score.
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseServerEnv } from '@domains-all/config';
+import { jevKey, parseServerEnv } from '@domains-all/config';
 import { createJev, type DecisionService } from '@domains-all/jev';
 import { createLogger } from '@domains-all/log';
 import { evaluateGolden, type GoldenItem } from '../src/eval/evaluate';
@@ -40,9 +40,12 @@ function counted(jev: DecisionService) {
 }
 
 const env = parseServerEnv(process.env);
-const hasKey = !env.MOCK_EXTERNALS && Boolean(env.AI_GATEWAY_API_KEY || env.TYPESAFE_API_KEY);
+const [keyName, keyValue] = jevKey(env);
+const hasKey = !env.MOCK_EXTERNALS && Boolean(keyValue);
 if (requireJev && !hasKey) {
-  console.error('The real Jev is not configured: set MOCK_EXTERNALS=0 and AI_GATEWAY_API_KEY.');
+  console.error(
+    `The real Jev is not configured: set MOCK_EXTERNALS=0 and ${keyName} (route ${env.JEV_ROUTE}).`,
+  );
   process.exit(1);
 }
 // Every real Jev request is logged as usual; the outcomes are also tallied ("401 auth — Invalid API key ×3") so a
@@ -89,7 +92,7 @@ if (models)
   console.log(onGitHub ? `::notice title=Jev models for this key::${models}` : `Jev models: ${models}`);
 
 const runs: Array<[string, DecisionService]> = [];
-if (hasKey) runs.push([`Jev ${env.JEV_MODEL}`, createJev({ env, log: jevLog })]);
+if (hasKey) runs.push([`Jev ${env.JEV_MODEL} via ${env.JEV_ROUTE}`, createJev({ env, log: jevLog })]);
 runs.push(['degraded (Jev unavailable)', createJev({ env: parseServerEnv({ MOCK_EXTERNALS: '0' }) })]);
 runs.push(['mock Jev (rules)', createJev({ env: parseServerEnv({}), mockHint: rulesMockHint })]);
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EnvError, missingForLive, parseServerEnv } from '../src/env';
+import { EnvError, jevKey, missingForLive, parseServerEnv } from '../src/env';
 import { absoluteUrl, siteIdentity } from '../src/site';
 
 const OWNER = '0190f5a8-0000-7000-8000-000000000001';
@@ -53,6 +53,17 @@ describe('server env', () => {
     expect(missing).toContain('AI_GATEWAY_API_KEY');
     expect(missing).not.toContain('RESEND_API_KEY');
     expect(missingForLive(parseServerEnv({ EMAIL_MODE: 'on' }))).toContain('RESEND_API_KEY');
+  });
+
+  it('asks for the Jev key that belongs to the chosen route', () => {
+    expect(jevKey(parseServerEnv({}))[0]).toBe('AI_GATEWAY_API_KEY');
+    expect(jevKey(parseServerEnv({ JEV_ROUTE: 'ngrok', NGROK_AI_API_KEY: 'k' }))).toEqual([
+      'NGROK_AI_API_KEY',
+      'k',
+    ]);
+    expect(missingForLive(parseServerEnv({ MOCK_EXTERNALS: '0', JEV_ROUTE: 'ngrok' }))).toContain(
+      'NGROK_AI_API_KEY',
+    );
   });
 
   it('keeps the grievance contact decided by the owner (FR-PRIV-007)', () => {

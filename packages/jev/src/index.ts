@@ -1,6 +1,6 @@
 // Public surface of the Jev package. Features import only from here (FR-JEV-001); the transport is reached
 // through `createJev`, never directly.
-import { jev as jevDefaults, type ServerEnv } from '@domains-all/config';
+import { jev as jevDefaults, jevKey, type ServerEnv } from '@domains-all/config';
 import { log as defaultLog, type Logger } from '@domains-all/log';
 import { CircuitBreaker } from './breaker';
 import { BudgetGuard, MemoryUsageStore, type UsageStore } from './budget';
@@ -20,7 +20,12 @@ export { refOf } from './types';
 export interface CreateJevOptions {
   env: Pick<
     ServerEnv,
-    'MOCK_EXTERNALS' | 'JEV_ROUTE' | 'JEV_MODEL' | 'AI_GATEWAY_API_KEY' | 'TYPESAFE_API_KEY'
+    | 'MOCK_EXTERNALS'
+    | 'JEV_ROUTE'
+    | 'JEV_MODEL'
+    | 'AI_GATEWAY_API_KEY'
+    | 'TYPESAFE_API_KEY'
+    | 'NGROK_AI_API_KEY'
   >;
   usageStore?: UsageStore;
   mockHint?: MockHint;
@@ -35,7 +40,7 @@ export interface CreateJevOptions {
  */
 export function createJev(opts: CreateJevOptions): DecisionService & { mode: 'live' | 'mock' } {
   const { env } = opts;
-  const apiKey = env.JEV_ROUTE === 'gateway' ? env.AI_GATEWAY_API_KEY : env.TYPESAFE_API_KEY;
+  const [, apiKey] = jevKey(env);
   const mode = env.MOCK_EXTERNALS ? 'mock' : 'live';
   const log = opts.log ?? defaultLog;
   const transport: Transport =

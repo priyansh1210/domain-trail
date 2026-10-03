@@ -7,6 +7,12 @@ name: weekly-jev-eval
 
 on:
   workflow_dispatch:
+    inputs:
+      route:
+        description: 'Where to reach Jev (ngrok needs NGROK_AI_API_KEY, gateway needs AI_GATEWAY_API_KEY and a card on Vercel)'
+        type: choice
+        options: [gateway, ngrok]
+        default: gateway
 
 permissions:
   contents: read
@@ -33,7 +39,9 @@ jobs:
       - name: Rank the golden set with the real Jev
         env:
           MOCK_EXTERNALS: '0'
+          JEV_ROUTE: ${{ inputs.route }}
           AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+          NGROK_AI_API_KEY: ${{ secrets.NGROK_AI_API_KEY }}
         run: pnpm eval:pipeline --require-jev
       - name: Save the report on the eval-reports branch
         if: always()
