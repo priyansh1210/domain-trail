@@ -42,7 +42,8 @@ packages/jev
 |---|---|---|
 | Endpoint (direct) | `POST https://api.typesafe.ai/v1/systemone` | flaviocopes.com/jev-api-key |
 | Endpoint (gateway) | `POST https://ai-gateway.vercel.sh/typesafe/v1/systemone` | flaviocopes.com/jev-api-key |
-| Models endpoint | `GET /v1/models` | same |
+| Models endpoint | `GET /v1/models` (gateway: `GET /typesafe/v1/models`) | same |
+| Model name on the gateway | `maker/model`, e.g. `typesafe-ai/jev`; the transport sends `typesafe-ai/<JEV_MODEL>` and strips the prefix from responses. Errors: `{ message, error_type }` | vercel.com/docs/ai-gateway/sdks-and-apis/typesafe (2026-10-04) |
 | Auth | `Authorization: Bearer <key>` (`TYPESAFE_API_KEY` or `AI_GATEWAY_API_KEY`) | same |
 | Body | `{ model, state, questions: { <name>: { type, instructions, criteria? } } }` | daleseo.com/jev |
 | Types | `choice` (criteria = object key→description, ≤ 255 keys), `score` (criteria = ordered array, 2–10 levels), `noul` (no criteria) | daleseo.com/jev |

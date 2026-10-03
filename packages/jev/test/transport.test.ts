@@ -1,6 +1,6 @@
 // Spec 002 tech §11 `transport.test.ts` (FR-JEV-005, 006, 010, 011).
 import { describe, expect, it, vi } from 'vitest';
-import { createHttpTransport, ROUTES } from '../src/transport';
+import { createHttpTransport, ROUTES, wireModel } from '../src/transport';
 import type { SystemOneRequest } from '../src/types';
 
 const body: SystemOneRequest = {
@@ -89,6 +89,49 @@ describe('http transport', () => {
       error: 'invalid',
     });
     expect(b.calls).toHaveLength(1);
+  });
+
+  it('uses AI Gateway model names on the gateway route and TypeSafe names elsewhere', async () => {
+    const { transport, calls } = setup([
+      () => Response.json({ model: 'typesafe-ai/jev-1.13.0', answers: {}, usage: { input_tokens: 1 } }),
+    ]);
+    const r = await transport.send(body, { deadline: 10_000, searchId: 's' });
+    expect(JSON.parse(String(calls[0]!.init.body)).model).toBe('typesafe-ai/jev-1.13.0');
+    expect(r.ok && r.response.model).toBe('jev-1.13.0'); // the app keeps TypeSafe's name
+    expect(wireModel('jev-1.13.0', 'direct')).toBe('jev-1.13.0');
+  });
+
+  it("reads the gateway's error code (error_type)", async () => {
+    const { transport, log } = setup([
+      () =>
+        Response.json({ message: 'state "bakery" rejected', error_type: 'invalid_request' }, { status: 400 }),
+    ]);
+    await transport.send(body, { deadline: 10_000, searchId: 's' });
+    expect(log.error).toHaveBeenCalledWith(expect.objectContaining({ detail: 'invalid_request' }));
+  });
+
+  it('logs why a request failed, without quoting the request', async () => {
+    const a = setup([
+      () =>
+        Response.json(
+          { error: { type: 'authentication_error', message: 'Invalid API key' } },
+          { status: 401 },
+        ),
+    ]);
+    await a.transport.send(body, { deadline: 10_000, searchId: 's' });
+    expect(a.log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 401, detail: 'authentication_error: Invalid API key' }),
+    );
+    const b = setup([
+      () =>
+        Response.json(
+          { error: { code: 'bad_state', message: 'state "bakery in Pune" too long' } },
+          { status: 422 },
+        ),
+    ]);
+    await b.transport.send(body, { deadline: 10_000, searchId: 's' });
+    expect(b.log.error).toHaveBeenCalledWith(expect.objectContaining({ status: 422, detail: 'bad_state' }));
+    expect(JSON.stringify(b.log.error.mock.calls)).not.toContain('Pune');
   });
 
   it('does not wait past the stage deadline (Retry-After too long)', async () => {

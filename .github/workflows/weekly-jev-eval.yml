@@ -41,6 +41,7 @@ jobs:
           report="packages/jev/eval/reports/$(date -u +%F).md"
           [ -f "$report" ] || exit 0
           cp "$report" "$RUNNER_TEMP/report.md"
+          git reset --hard --quiet # the run rewrote tracked report files; drop them before switching branches
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if git fetch --depth 1 origin eval-reports; then git switch -c eval-reports FETCH_HEAD; else git switch --orphan eval-reports; fi
