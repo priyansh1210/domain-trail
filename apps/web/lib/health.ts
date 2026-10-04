@@ -11,6 +11,18 @@ export interface Health {
   jevBreaker: 'closed' | 'open';
   version: string;
   mode: 'live' | 'mock';
+  /** Freshness of the public data the server reads (spec 006 FR-PRC-011, spec 009 FR-UX-011). */
+  data?: HealthData;
+}
+
+export interface HealthData {
+  pricesAt: string;
+  fxAsOf: string;
+  publicData: 'live' | 'fixture';
+  priceRefresh: 'ok' | 'failed' | 'not_yet';
+  /** Short reason when the last refresh failed (no secrets: only the public URL and status). */
+  priceRefreshNote?: string;
+  rdapDirectory: string;
 }
 
 type FetchFn = typeof fetch;
@@ -57,14 +69,16 @@ export async function computeHealth(
   env: ServerEnv,
   fetchFn: FetchFn = fetch,
   jevBreaker: 'closed' | 'open' = 'closed',
+  data?: HealthData,
 ): Promise<Health> {
   const version = env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? 'local';
+  const extra = data ? { data } : {};
   if (env.MOCK_EXTERNALS) {
-    // Mock mode uses in-process fixtures for every dependency (spec 016 FR-QA-003).
-    return { ok: true, db: 'ok', upstash: 'ok', jevBreaker, version, mode: 'mock' };
+    // Mock mode uses in-process fixtures for paid dependencies (spec 016 FR-QA-003).
+    return { ok: true, db: 'ok', upstash: 'ok', jevBreaker, version, mode: 'mock', ...extra };
   }
   const [db, upstash] = await Promise.all([checkDb(env, fetchFn), checkUpstash(env, fetchFn)]);
-  return { ok: db === 'ok' && upstash === 'ok', db, upstash, jevBreaker, version, mode: 'live' };
+  return { ok: db === 'ok' && upstash === 'ok', db, upstash, jevBreaker, version, mode: 'live', ...extra };
 }
 
 /** Per-instance cache so monitors and bursts cost at most one probe per 30 s. */
