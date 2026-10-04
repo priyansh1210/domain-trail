@@ -60,6 +60,9 @@ export interface Services {
   prices: PriceSource;
   /** Publication date of the RDAP directory in use (health check). */
   rdapPublication(): string;
+  /** Refreshes prices, FX and the RDAP directory when due, waiting at most `maxWaitMs` (inside the request: the host
+   *  freezes work left running after a response). */
+  refreshPublicData(maxWaitMs: number): Promise<void>;
   feedback: FeedbackStore;
   limitsEnforced: boolean;
   verifyHuman(token: string, ip: string | undefined): Promise<HumanCheck>;
@@ -86,10 +89,14 @@ export function buildServices(env: ServerEnv): Services {
   const userAgent = `${site.name.replace(/[^\w.-]/g, '')}/${PIPELINE_VERSION} (+${site.origin})`;
 
   const directory = createDirectorySource({ live: publicLive, fetchFn });
+  const prices = createPriceSource({ live: publicLive, fetchFn });
 
   return {
     env,
     rdapPublication: () => directory.get().publication,
+    async refreshPublicData(maxWaitMs) {
+      await Promise.all([prices.ensureFresh(maxWaitMs), directory.ensureFresh(maxWaitMs)]);
+    },
     checker: createChecker({
       directory,
       userAgent,
@@ -99,7 +106,7 @@ export function buildServices(env: ServerEnv): Services {
       ...(publicLive ? {} : { limiter: new HostLimiter({ rps: 10_000, burst: 10_000, concurrency: 100 }) }),
     }),
     freeChecker: createFreeChecker({ live: publicLive, fetchFn }),
-    prices: createPriceSource({ live: publicLive, fetchFn }),
+    prices,
     feedback: sb ? new SupabaseFeedbackStore(sb) : new MemoryFeedbackStore(),
     jev: createJev({ env, usageStore: sb ? new SupabaseUsageStore(sb) : undefined, mockHint: rulesMockHint }),
     store: sb ? new SupabaseSearchStore(sb) : new MemorySearchStore(),

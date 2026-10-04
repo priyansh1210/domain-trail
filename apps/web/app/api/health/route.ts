@@ -4,9 +4,9 @@ import { services } from '@/lib/server/services';
 
 export const dynamic = 'force-dynamic';
 
-const getHealth = cachedHealth(() => {
+const getHealth = cachedHealth(async () => {
   const svc = services();
-  svc.prices.get(); // a health check also starts a due price refresh
+  await svc.refreshPublicData(3000); // a health check also refreshes due public data (uptime pings keep it fresh)
   const p = svc.prices.status();
   const note = [p.lastRefresh?.pricesError, p.lastRefresh?.fxError].filter(Boolean).join('; ');
   return computeHealth(svc.env, fetch, svc.jev.breakerState(), {

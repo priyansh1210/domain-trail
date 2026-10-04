@@ -2,7 +2,7 @@
 // tasks/M4-verify.md decision 3). Live mode refreshes Porkbun and Frankfurter in the background every 12 hours;
 // the committed snapshots answer at once and remain the fallback.
 import { pricing } from '@domains-all/config/defaults';
-import { timedFetch } from '@domains-all/config/net';
+import { timedFetch, within } from '@domains-all/config/net';
 import fxSnapshot from '../data/fx-rates.json';
 import priceSnapshot from '../data/porkbun-prices.json';
 import policyData from '../data/tld-policies.json';
@@ -73,9 +73,10 @@ export function isStale(book: PriceBook, now = Date.now()): boolean {
 export function createPriceSource(opts: { live: boolean; fetchFn?: typeof fetch; now?: () => number }) {
   const now = opts.now ?? Date.now;
   let book = snapshotBook();
-  let tried = opts.live ? 0 : Number.POSITIVE_INFINITY;
+  let tried = opts.live ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY; // live: never tried yet
   let inFlight: Promise<void> | undefined;
   const maxAge = pricing.refreshHours * 3600_000;
+  const RETRY_AFTER_FAILURE_MS = 10 * 60_000;
 
   async function load(): Promise<void> {
     const get = async (url: string) => {
@@ -107,16 +108,30 @@ export function createPriceSource(opts: { live: boolean; fetchFn?: typeof fetch;
   /** Last refresh attempt, for the health check and logs (FR-PRC-011). */
   let refresh: { at: string; ok: boolean; pricesError?: string; fxError?: string } | undefined;
 
+  /** Starts a refresh when one is due. After a failure the next try comes 10 minutes later, not 12 hours. */
+  function start(): void {
+    if (inFlight || now() - tried < maxAge) return;
+    tried = now();
+    inFlight = load()
+      .catch(() => undefined)
+      .finally(() => {
+        inFlight = undefined;
+        if (!refresh?.ok) tried = now() - maxAge + RETRY_AFTER_FAILURE_MS;
+      });
+  }
+
   return {
     get(): PriceBook {
-      if (!inFlight && now() - tried >= maxAge) {
-        tried = now();
-        inFlight = load()
-          .catch(() => undefined)
-          .finally(() => {
-            inFlight = undefined;
-          });
-      }
+      start();
+      return book;
+    },
+    /**
+     * Refreshes within the current request when due, waiting at most `maxWaitMs`. Serverless hosts freeze work that
+     * outlives a response (2026-10-04: background refreshes on the production host never finished).
+     */
+    async ensureFresh(maxWaitMs: number): Promise<PriceBook> {
+      start();
+      if (inFlight) await within(inFlight, maxWaitMs, undefined);
       return book;
     },
     settled: () => inFlight ?? Promise.resolve(),

@@ -55,6 +55,7 @@ export async function streamVerify(
   },
 ): Promise<VerifyStreamResult> {
   sink.send('progress', { stage: 'availability', pct: 60 });
+  await svc.refreshPublicData(2500); // usually instant; at most once per 12 h per server it fetches fresh data
   const book = sendPricing(sink, svc);
   const keep = args.keep ?? (() => true);
   const verified = await runVerify({
