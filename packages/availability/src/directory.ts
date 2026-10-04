@@ -1,7 +1,7 @@
 // Which registry answers RDAP for an extension (spec 005 tech §5.2, research R-03). The IANA bootstrap file lists
 // one base URL per TLD; second-level extensions (`co.in`, `com.au`) are answered by their parent's registry.
 import { availability } from '@domains-all/config/defaults';
-import { timedFetch } from '@domains-all/config/net';
+import { timedFetch, within } from '@domains-all/config/net';
 import snapshot from '../data/rdap-directory.json';
 
 export const IANA_RDAP_URL = 'https://data.iana.org/rdap/dns.json';
@@ -50,20 +50,28 @@ export class RdapDirectory {
 export function createDirectorySource(opts: { live: boolean; fetchFn?: typeof fetch; now?: () => number }) {
   const now = opts.now ?? Date.now;
   let current = RdapDirectory.fromSnapshot();
-  let fetchedAt = opts.live ? 0 : Number.POSITIVE_INFINITY;
+  let fetchedAt = opts.live ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY; // live: never fetched yet
   let inFlight: Promise<void> | undefined;
   const maxAge = availability.directoryRefreshHours * 3600_000;
 
+  let refreshedAt: string | undefined;
+
   function refresh(): void {
     if (inFlight || now() - fetchedAt < maxAge) return;
-    fetchedAt = now(); // one attempt per window, even if it fails
+    fetchedAt = now();
+    let ok = false;
     inFlight = timedFetch(IANA_RDAP_URL, { timeoutMs: 10_000, maxBytes: 2_000_000, fetchFn: opts.fetchFn })
       .then((res) => {
-        if (res?.ok && res.text) current = RdapDirectory.fromIana(JSON.parse(res.text));
+        if (res?.ok && res.text) {
+          current = RdapDirectory.fromIana(JSON.parse(res.text));
+          refreshedAt = new Date(now()).toISOString();
+          ok = true;
+        }
       })
       .catch(() => undefined) // keep the previous copy
       .finally(() => {
         inFlight = undefined;
+        if (!ok) fetchedAt = now() - maxAge + 10 * 60_000; // try again in 10 minutes
       });
   }
 
@@ -72,6 +80,15 @@ export function createDirectorySource(opts: { live: boolean; fetchFn?: typeof fe
       refresh();
       return current;
     },
+    /** Refreshes within the current request when due, waiting at most `maxWaitMs` (serverless hosts freeze
+     *  background work after a response). */
+    async ensureFresh(maxWaitMs: number): Promise<RdapDirectory> {
+      refresh();
+      if (inFlight) await within(inFlight, maxWaitMs, undefined);
+      return current;
+    },
+    /** When this server last fetched the directory (undefined: still the committed snapshot). */
+    refreshedAt: () => refreshedAt,
     /** For tests: waits for a background refresh, if one is running. */
     settled: () => inFlight ?? Promise.resolve(),
   };

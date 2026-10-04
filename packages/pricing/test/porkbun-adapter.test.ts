@@ -111,6 +111,41 @@ describe('price source', () => {
     expect(st.pricesAt).toBe(snapshotBook().pricesAt); // the snapshot stays in use
   });
 
+  it('refreshes inside the request when asked, and retries 10 minutes after a failure', async () => {
+    let now = Date.parse('2026-10-04T00:00:00Z');
+    let up = false;
+    const fetchFn = vi.fn(async (url: string) =>
+      !up
+        ? new Response('', { status: 503 })
+        : Response.json(
+            url.includes('porkbun')
+              ? porkbun(400, '13.00')
+              : {
+                  base: 'USD',
+                  date: '2026-10-04',
+                  rates: Object.fromEntries(
+                    'EUR GBP JPY INR CNY CAD AUD CHF SGD SEK'.split(' ').map((c) => [c, 2]),
+                  ),
+                },
+          ),
+    );
+    const source = createPriceSource({
+      live: true,
+      fetchFn: fetchFn as unknown as typeof fetch,
+      now: () => now,
+    });
+    await source.ensureFresh(1000);
+    expect(source.status().lastRefresh?.ok).toBe(false);
+    up = true;
+    now += 5 * 60_000;
+    await source.ensureFresh(1000);
+    expect(source.get().prices.get('com')!.registerCents).not.toBe(1300); // too soon to try again
+    now += 6 * 60_000;
+    const book = await source.ensureFresh(1000);
+    expect(book.prices.get('com')!.registerCents).toBe(1300);
+    expect(source.status().lastRefresh?.ok).toBe(true);
+  });
+
   it('marks prices older than 30 hours as stale', () => {
     const book = { ...snapshotBook(), pricesAt: '2026-10-01T00:00:00Z' };
     expect(isStale(book, Date.parse('2026-10-02T05:00:00Z'))).toBe(false);
