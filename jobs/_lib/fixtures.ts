@@ -150,7 +150,7 @@ export const fixtureFetch: typeof fetch = async (input) => {
   if (url.host === 'api.github.com') return json(githubTree());
   if (url.host === 'raw.githubusercontent.com') return text(jsOrgList(), 'application/javascript');
   if (url.host === 'cloudflare-dns.com' || url.host === 'dns.google') return doh(url);
-  if (url.protocol === 'https:' && !url.host.endsWith('resend.com'))
+  if (url.protocol === 'https:' && url.host !== 'api.resend.com')
     return text('<!doctype html><title>ok</title>', 'text/html');
   return new Response('not found', { status: 404 });
 };

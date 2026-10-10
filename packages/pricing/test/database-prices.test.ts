@@ -15,7 +15,7 @@ function server(opts: { pricesAt?: string; dbDown?: boolean; porkbun?: 'ok' | 'd
   const calls: string[] = [];
   const fetchFn = (async (input: string | URL | Request) => {
     const url = new URL(String(input));
-    calls.push(url.host + url.pathname);
+    calls.push(url.host); // hosts asked, compared exactly
     if (url.host === 'db.example.supabase.co') {
       if (opts.dbDown) return new Response('{}', { status: 503 });
       if (url.pathname.endsWith('/tld_prices')) {
@@ -82,14 +82,14 @@ describe('createPriceSource with the database', () => {
     expect(book.fx.asOf).toBe('2026-10-09');
     expect(book.fx.rates.INR).toBe(88.1);
     expect(src.status()).toMatchObject({ source: 'database', lastRefresh: { ok: true } });
-    expect(calls.some((c) => c.startsWith('api.porkbun.com'))).toBe(false);
+    expect(calls.includes('api.porkbun.com')).toBe(false);
   });
 
   it('asks Porkbun when the database copy is old', async () => {
     const { calls, fetchFn } = server({ pricesAt: '2026-10-08T01:00:00Z', porkbun: 'ok' });
     const src = createPriceSource({ live: true, fetchFn, now: () => NOW, database: DB });
     const book = await src.ensureFresh(5000);
-    expect(calls.some((c) => c.startsWith('api.porkbun.com'))).toBe(true);
+    expect(calls.includes('api.porkbun.com')).toBe(true);
     expect(src.status().source).toBe('porkbun');
     expect(book.prices.get('com')?.registerCents).toBe(1200);
   });
