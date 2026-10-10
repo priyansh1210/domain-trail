@@ -1,7 +1,7 @@
 // Prices and FX rates written daily by the price job (spec 010 §5.1, tasks/M5-freshness.md decision 2). Both tables
 // are public reference data (spec 012 §4), read here over the database's REST interface with the public key, so
 // the site gets fresh prices even though Porkbun does not answer the hosting provider.
-import { timedFetch } from '@domains-all/config/net';
+import { publicKeyHeaders, timedFetch } from '@domains-all/config/net';
 import type { FxTable } from './client';
 import { assertSanePrices, PORKBUN, type TldPrice } from './sources';
 
@@ -14,7 +14,7 @@ const PAGE = 1000; // the REST interface returns at most 1,000 rows per request
 
 async function rows<T>(db: PublicDatabase, path: string, fetchFn?: typeof fetch): Promise<T[]> {
   const res = await timedFetch(new URL(`/rest/v1/${path}`, db.url).toString(), {
-    headers: { apikey: db.anonKey, authorization: `Bearer ${db.anonKey}`, accept: 'application/json' },
+    headers: { ...publicKeyHeaders(db.anonKey), accept: 'application/json' },
     timeoutMs: 5000,
     maxBytes: 2_000_000,
     fetchFn,

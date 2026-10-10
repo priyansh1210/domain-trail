@@ -3,7 +3,8 @@
 // public key; without a database the report shows what this server knows itself.
 import { jevKey } from '@domains-all/config';
 import { jobs as jobCfg } from '@domains-all/config/defaults';
-import { timedFetch } from '@domains-all/config/net';
+import { publicKeyHeaders, timedFetch } from '@domains-all/config/net';
+import { log } from '@domains-all/log';
 import type { Services } from './services';
 
 export type Dataset = 'prices' | 'fx' | 'tlds' | 'nrd' | 'freeProviders' | 'brandList';
@@ -55,13 +56,17 @@ export async function readJobStatus(
   if (!url || !key) return [];
   const res = await timedFetch(new URL('/rest/v1/rpc/public_job_status', url).toString(), {
     method: 'POST',
-    headers: { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+    headers: { ...publicKeyHeaders(key), 'content-type': 'application/json' },
     body: '{}',
     timeoutMs: 3000,
     maxBytes: 100_000,
     fetchFn,
   });
-  if (!res?.ok || !res.text) return [];
+  if (!res?.ok || !res.text) {
+    // Visible in the hosting logs: a wrong or missing public key shows up here (status code, no secrets).
+    log.warn({ event: 'status.jobs_unavailable', status: res?.status ?? 'no answer' });
+    return [];
+  }
   const rows = JSON.parse(res.text) as Array<{
     job: string;
     last_success_at: string | null;

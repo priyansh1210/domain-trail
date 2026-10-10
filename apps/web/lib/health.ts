@@ -1,6 +1,7 @@
 // Health report for uptime monitoring (spec 015 tech §4, OpenAPI `/health`). No secrets or internal host
 // names are ever included.
 import { observability, type ServerEnv } from '@domains-all/config';
+import { publicKeyHeaders } from '@domains-all/config/net';
 
 export type DependencyState = 'ok' | 'down';
 
@@ -50,10 +51,11 @@ export async function checkDb(env: ServerEnv, fetchFn: FetchFn = fetch): Promise
   const key = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return 'down';
   // `tlds` is public reference data (spec 012 §4), so the anon key can read it under RLS.
-  const res = await probe(fetchFn, new URL('/rest/v1/tlds?select=tld&limit=1', url).toString(), {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-  });
+  const res = await probe(
+    fetchFn,
+    new URL('/rest/v1/tlds?select=tld&limit=1', url).toString(),
+    publicKeyHeaders(key),
+  );
   return res?.ok ? 'ok' : 'down';
 }
 

@@ -64,6 +64,20 @@ function server(opts: { pricesAt?: string; dbDown?: boolean; porkbun?: 'ok' | 'd
 }
 
 describe('database price list', () => {
+  it('sends a new-format public key only in the apikey header', async () => {
+    const seen: Array<string | null> = [];
+    const { fetchFn } = server({});
+    const spy = (async (input: string | URL | Request, init?: RequestInit) => {
+      const h = new Headers(init?.headers);
+      seen.push(h.get('authorization'));
+      expect(h.get('apikey')).toBe('sb_publishable_x');
+      return fetchFn(input, init);
+    }) as typeof fetch;
+    await loadDatabasePrices({ url: DB.url, anonKey: 'sb_publishable_x' }, spy);
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.every((v) => v === null)).toBe(true);
+  });
+
   it('reads every page and checks the list is sane', async () => {
     const { fetchFn } = server({});
     const { prices, pricesAt } = await loadDatabasePrices(DB, fetchFn);

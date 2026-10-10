@@ -65,3 +65,12 @@ export async function within<T>(promise: Promise<T>, ms: number, fallback: T): P
     clearTimeout(timer);
   }
 }
+
+/**
+ * Headers for the database's REST interface with the public key. Supabase's newer publishable keys
+ * (`sb_publishable_…`) are not JWTs and are refused in `Authorization: Bearer`, so they go only in `apikey`;
+ * older anon keys (JWTs, `eyJ…`) are also sent as Bearer, as before.
+ */
+export function publicKeyHeaders(key: string): Record<string, string> {
+  return key.startsWith('eyJ') ? { apikey: key, authorization: `Bearer ${key}` } : { apikey: key };
+}
