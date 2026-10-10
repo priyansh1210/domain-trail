@@ -1,7 +1,7 @@
 // Every outbound call is bounded (spec 000; incident 2026-10-04: on the production host some requests ignored the
 // abort signal and a search never finished). `timedFetch` and `within` must settle even then.
 import { describe, expect, it } from 'vitest';
-import { timedFetch, within } from '../src/net';
+import { publicKeyHeaders, timedFetch, within } from '../src/net';
 
 const never = (() => new Promise<Response>(() => undefined)) as unknown as typeof fetch;
 
@@ -41,5 +41,18 @@ describe('within', () => {
     expect(await within(new Promise<string>(() => undefined), 50, 'late')).toBe('late');
     expect(await within(Promise.reject(new Error('x')), 50, 'failed')).toBe('failed');
     expect(await within(Promise.resolve('ok'), 50, 'late')).toBe('ok');
+  });
+});
+
+describe('publicKeyHeaders', () => {
+  it('sends new publishable keys only in apikey (they are not JWTs)', () => {
+    expect(publicKeyHeaders('sb_publishable_abc')).toEqual({ apikey: 'sb_publishable_abc' });
+  });
+
+  it('also sends old JWT anon keys as Bearer', () => {
+    expect(publicKeyHeaders('eyJhbGciOi.x.y')).toEqual({
+      apikey: 'eyJhbGciOi.x.y',
+      authorization: 'Bearer eyJhbGciOi.x.y',
+    });
   });
 });
