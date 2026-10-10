@@ -31,45 +31,45 @@ Status: ☐ open · ◐ in progress · ☑ done · ⏸ waiting for the owner
 ## A. Sign-in (spec 011 §5.1, §5.5)
 | # | Task | Requirement | Status |
 |---|---|---|---|
-| A1 | Server session layer: current user (signed in / anonymous), Google and GitHub sign-in URLs, code exchange, anonymous session (Turnstile-protected), sign out here / everywhere; mock provider | FR-ACC-002, 013 || ☑ |
-| A2 | `/auth/sign-in`, `/auth/callback` (return to the page and replay the started action), `/auth/sign-out`; same-origin check on every state-changing request | FR-ACC-003, spec 011 §9 || ☑ |
-| A3 | First sign-in: terms + 18+ page; profile row with policy version and time | FR-ACC-015, FR-PRIV-008 || ☑ |
-| A4 | Signed-out saves move into the account after sign-in | FR-ACC-018 || ☑ |
+| A1 | Server session layer: current user (signed in / anonymous), Google and GitHub sign-in URLs, code exchange, anonymous session (Turnstile-protected), sign out here / everywhere; mock provider | FR-ACC-002, 013 | ☑ |
+| A2 | `/auth/sign-in`, `/auth/callback` (return to the page and replay the started action), `/auth/sign-out`; same-origin check on every state-changing request | FR-ACC-003, spec 011 §9 | ☑ |
+| A3 | First sign-in: terms + 18+ page; profile row with policy version and time | FR-ACC-015, FR-PRIV-008 | ☑ |
+| A4 | Signed-out saves move into the account after sign-in | FR-ACC-018 | ☑ |
 
 ## B. Saved items and settings (spec 011 §4, §5.4, §5.6)
 | # | Task | Requirement | Status |
 |---|---|---|---|
-| B1 | Account store (Supabase with the user's session under RLS; memory in mock mode) | FR-DATA-004 || ☑ |
-| B2 | `/api/me` (profile, settings, delete), `/api/me/saved-searches`, `/api/me/watchlist`, `/api/me/notifications`, `/api/me/export`, `/api/me/anonymous` | FR-ACC-004, 005, 010, 011, 012, 017, 019 || ☑ |
-| B3 | Limits: 20 saved searches, 100 names → 409 with a clear message | FR-ACC-004, 005 || ☑ |
-| B4 | Signed-in search limits (60/day, keyed by account) for search, find-more and refine | FR-ABU-002 || ☑ |
+| B1 | Account store (Supabase with the user's session under RLS; memory in mock mode) | FR-DATA-004 | ☑ |
+| B2 | `/api/me` (profile, settings, delete), `/api/me/saved-searches`, `/api/me/watchlist`, `/api/me/notifications`, `/api/me/export`, `/api/me/anonymous` | FR-ACC-004, 005, 010, 011, 012, 017, 019 | ☑ |
+| B3 | Limits: 20 saved searches, 100 names → 409 with a clear message | FR-ACC-004, 005 | ☑ |
+| B4 | Signed-in search limits (60/day, keyed by account) for search, find-more and refine | FR-ABU-002 | ☑ |
 
 ## C. Pages
 | # | Task | Requirement | Status |
 |---|---|---|---|
-| C1 | Header: "Sign in" / "Account"; `/sign-in` with Google and GitHub | FR-ACC-001, 002 || ☑ |
-| C2 | Results: "Save search" and a star on each card (signed out too) | FR-ACC-004, 005, 017 || ☑ |
-| C3 | `/account`: saved searches (open, run again, delete), watchlist, notifications (30 days), settings, export, delete, sign out (here / everywhere); signed-out savers see their items and "Delete my saved items" | FR-ACC-004…013, 019 || ☑ |
-| C4 | Chip editing for signed-in users, read-only chips with "Sign in to edit" otherwise; `POST /api/search/{ref}/refine` re-ranks with the edited features without repeating detection | FR-FEAT-011 || ☑ |
-| C5 | Privacy Policy line: saved items are stored on our servers and can be seen by the site operator; deleted accounts leave backups within 28 days | FR-ACC-021, FR-ACC-012 || ☑ |
+| C1 | Header: "Sign in" / "Account"; `/sign-in` with Google and GitHub | FR-ACC-001, 002 | ☑ |
+| C2 | Results: "Save search" and a star on each card (signed out too) | FR-ACC-004, 005, 017 | ☑ |
+| C3 | `/account`: saved searches (open, run again, delete), watchlist, notifications (30 days), settings, export, delete, sign out (here / everywhere); signed-out savers see their items and "Delete my saved items" | FR-ACC-004…013, 019 | ☑ |
+| C4 | Chip editing for signed-in users, read-only chips with "Sign in to edit" otherwise; `POST /api/search/{ref}/refine` re-ranks with the edited features without repeating detection | FR-FEAT-011 | ☑ |
+| C5 | Privacy Policy line: saved items are stored on our servers and can be seen by the site operator; deleted accounts leave backups within 28 days | FR-ACC-021, FR-ACC-012 | ☑ |
 
 ## D. Alerts (spec 011 §5.2–5.3)
 | # | Task | Requirement | Status |
 |---|---|---|---|
-| D1 | `watchlist` job (daily 04:00 UTC): re-check watched names and the top 10 results of saved searches with alerts on → in-app notifications (registered, available, price change ≥ 10 %) | FR-ACC-006, 007, FR-REF-008 || ☑ |
-| D2 | Digest builder (one per user per day or week, registered/available first), HMAC unsubscribe tokens, `/api/unsubscribe` (page + one-click POST); sending only when `EMAIL_MODE=on` | FR-ACC-008, 009, 014, 016 || ☑ |
+| D1 | `watchlist` job (daily 04:00 UTC): re-check watched names and the top 10 results of saved searches with alerts on → in-app notifications (registered, available, price change ≥ 10 %) | FR-ACC-006, 007, FR-REF-008 | ☑ |
+| D2 | Digest builder (one per user per day or week, registered/available first), HMAC unsubscribe tokens, `/api/unsubscribe` (page + one-click POST); sending only when `EMAIL_MODE=on` | FR-ACC-008, 009, 014, 016 | ☑ |
 
 ## E. Owner views (spec 011 §5.8, spec 015 §5.6)
 | # | Task | Requirement | Status |
 |---|---|---|---|
-| E1 | `/ops`: job runs, meters, reports (owner only; everyone else gets "not found") | FR-OBS-005 || ☑ |
-| E2 | `/ops/saved`: accounts, saved searches, saved names, watchlists (signed in and signed out) | FR-ACC-020 || ☑ |
+| E1 | `/ops`: job runs, meters, reports (owner only; everyone else gets "not found") | FR-OBS-005 | ☑ |
+| E2 | `/ops/saved`: accounts, saved searches, saved names, watchlists (signed in and signed out) | FR-ACC-020 | ☑ |
 
 ## F. Tests
 | # | Task | Status |
 |---|---|---|
-| F1 | Unit/integration: session layer, account routes (memory store), refine, feature edits, watchlist job (in-process database), digest and unsubscribe || ☑ |
-| F2 | End to end (mock sign-in): sign in → terms → save → star → account page → settings → export → delete; signed-out save → sign in → items moved; chip editing; admin view allowed / not found || ☑ |
+| F1 | Unit/integration: session layer, account routes (memory store), refine, feature edits, watchlist job (in-process database), digest and unsubscribe | ☑ |
+| F2 | End to end (mock sign-in): sign in → terms → save → star → account page → settings → export → delete; signed-out save → sign in → items moved; chip editing; admin view allowed / not found | ☑ |
 
 ## H. Owner steps (before real sign-in on the live site)
 | # | Task | Status |
