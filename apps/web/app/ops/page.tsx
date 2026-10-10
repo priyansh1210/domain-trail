@@ -32,6 +32,26 @@ export default async function OpsPage() {
       </header>
       {store.kind === 'memory' && <p className="text-sm text-[var(--muted)]">{t('ops.noData')}</p>}
 
+      <section aria-labelledby="messages" className="flex flex-col gap-2">
+        <h2 id="messages" className="text-lg font-semibold">
+          {t('ops.messages')}
+        </h2>
+        {o.messages.length === 0 ? (
+          <p className="text-sm text-[var(--muted)]">{t('ops.noMessages')}</p>
+        ) : (
+          <ul className="flex flex-col gap-2 text-sm" data-testid="contact-messages">
+            {o.messages.map((m) => (
+              <li key={m.id} className="rounded-lg border border-[var(--border)] p-3">
+                <p className="font-medium">
+                  {m.email} · {m.createdAt.slice(0, 10)}
+                </p>
+                <p className="whitespace-pre-wrap">{m.message}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <section aria-labelledby="meters" className="flex flex-col gap-2">
         <h2 id="meters" className="text-lg font-semibold">
           {t('ops.meters')}

@@ -27,10 +27,13 @@ export function ChipEditor({
   profile,
   searchRef,
   onCancel,
+  onLeave,
 }: {
   profile: SiteProfile;
   searchRef: string;
   onCancel: () => void;
+  /** The new results open on another page; the current one must stop updating the address. */
+  onLeave: () => void;
 }) {
   const router = useRouter();
   const token = useHumanToken();
@@ -59,7 +62,10 @@ export function ChipEditor({
     setNote('');
     const r = await refineSearch(searchRef, edits, await token());
     setBusy(false);
-    if ('ref' in r) return router.push(`/s/${r.ref}`);
+    if ('ref' in r) {
+      onLeave();
+      return router.push(`/s/${r.ref}`);
+    }
     setNote(
       r.error.kind === 'no_description'
         ? t('results.editNeedsDescription')

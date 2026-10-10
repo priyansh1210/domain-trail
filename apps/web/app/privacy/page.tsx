@@ -1,22 +1,22 @@
 import type { Metadata } from 'next';
-import { serverEnv } from '@domains-all/config';
-import { t, tList } from '@/lib/i18n';
+import { serverEnv, siteIdentity } from '@domains-all/config';
+import { PolicyView } from '@/components/policy-view';
+import { privacyPolicy } from '@/content/policies';
 
-export const metadata: Metadata = { title: t('policy.privacyTitle') };
+export const metadata: Metadata = { title: 'Privacy Policy' };
 
-// Short summary until the full policy (spec 013 tech §5.7) is published in milestone M6.
+// Spec 013 tech §5.7 (FR-PRIV-001, 007, 009, 017; FR-ACC-021).
 export default function PrivacyPage() {
   const env = serverEnv();
+  const site = siteIdentity(env);
   return (
-    <article className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t('policy.privacyTitle')}</h1>
-      <p className="text-sm text-[var(--muted)]">{t('policy.draft')}</p>
-      <ul className="list-disc pl-6">
-        {tList('policy.privacyPoints').map((p) => (
-          <li key={p}>{p}</li>
-        ))}
-      </ul>
-      <p>{t('policy.grievance', { name: env.GRIEVANCE_NAME, email: env.GRIEVANCE_EMAIL })}</p>
-    </article>
+    <PolicyView
+      policy={privacyPolicy({
+        siteName: site.name,
+        siteUrl: site.origin,
+        grievanceName: env.GRIEVANCE_NAME,
+        grievanceEmail: env.GRIEVANCE_EMAIL,
+      })}
+    />
   );
 }

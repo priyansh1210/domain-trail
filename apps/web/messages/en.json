@@ -256,7 +256,8 @@
     "dataAgeStale": "Domain data last updated {age} ago — may be out of date",
     "ageHours": "{n} h",
     "ageUnderHour": "less than an hour",
-    "ageDays": "{n} days"
+    "ageDays": "{n} days",
+    "contact": "Contact"
   },
   "policy": {
     "draft": "This is a short summary. The full policy will be published before the public launch.",
@@ -451,6 +452,18 @@
     "saves": "Saves",
     "watches": "Watches",
     "savedLink": "Saved items",
-    "opsLink": "Jobs and budgets"
+    "opsLink": "Jobs and budgets",
+    "messages": "Messages from the contact page",
+    "noMessages": "No messages."
+  },
+  "contact": {
+    "title": "Contact",
+    "intro": "Questions, problems, a request about your data, or a complaint — write to us here. We answer within 30 days.",
+    "grievance": "Grievance contact: {name} — {email}",
+    "email": "Your e-mail address",
+    "message": "Message",
+    "send": "Send",
+    "sent": "Thank you — your message has arrived. We answer within 30 days.",
+    "privacy": "We keep messages for one year and use your address only to answer you."
   }
 }

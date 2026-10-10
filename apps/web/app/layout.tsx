@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Script from 'next/script';
 import type { ReactNode } from 'react';
 import { siteIdentity } from '@domains-all/config';
 import { AccountLink } from '@/components/account-link';
@@ -8,6 +9,8 @@ import { t } from '@/lib/i18n';
 import './globals.css';
 
 const site = siteIdentity();
+/** Cloudflare Web Analytics: cookieless page counts (spec 009, FR-PRIV-003); only when the owner sets a token. */
+const CF_ANALYTICS = process.env.NEXT_PUBLIC_CF_ANALYTICS_TOKEN;
 
 export const metadata: Metadata = {
   metadataBase: site.url,
@@ -50,9 +53,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/terms" className="underline">
                 {t('footer.terms')}
               </Link>
+              <Link href="/contact" className="underline">
+                {t('footer.contact')}
+              </Link>
             </nav>
           </div>
         </footer>
+        {CF_ANALYTICS && (
+          <Script
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            strategy="afterInteractive"
+            data-cf-beacon={JSON.stringify({ token: CF_ANALYTICS })}
+          />
+        )}
       </body>
     </html>
   );

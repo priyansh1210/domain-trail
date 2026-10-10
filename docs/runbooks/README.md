@@ -10,5 +10,7 @@ when to use it, what to do and how to check it worked.
 | [restore-db.md](./restore-db.md) | data was lost or damaged, and for the quarterly restore drill |
 | [supabase-unpause.md](./supabase-unpause.md) | the free database was paused |
 | [budget-exhausted.md](./budget-exhausted.md) | a budget alert arrived or a free limit was reached |
-
-Deploy, rollback, secret rotation and incident runbooks come with milestone M6 (launch).
+| [deploy.md](./deploy.md) | a pull request is ready to go live |
+| [rollback.md](./rollback.md) | the live site broke after a deploy |
+| [rotate-secrets.md](./rotate-secrets.md) | a secret may have leaked, or once a year |
+| [incident.md](./incident.md) | someone may have seen or changed data they should not |

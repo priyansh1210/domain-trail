@@ -22,6 +22,7 @@
     "@domains-all/free-domains": "workspace:*",
     "@domains-all/jev": "workspace:*",
     "@domains-all/log": "workspace:*",
+    "@domains-all/metrics": "workspace:*",
     "@domains-all/pricing": "workspace:*",
     "@microsoft/fetch-event-source": "^2.0.1",
     "@supabase/ssr": "0.12.7",

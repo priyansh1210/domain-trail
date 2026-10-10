@@ -1,19 +1,22 @@
 import type { Metadata } from 'next';
-import { t, tList } from '@/lib/i18n';
+import { serverEnv, siteIdentity } from '@domains-all/config';
+import { PolicyView } from '@/components/policy-view';
+import { terms } from '@/content/policies';
 
-export const metadata: Metadata = { title: t('policy.termsTitle') };
+export const metadata: Metadata = { title: 'Terms' };
 
-// Short summary until the full terms (spec 013 tech §5.8) are published in milestone M6.
+// Spec 013 tech §5.8 (FR-PRIV-002).
 export default function TermsPage() {
+  const env = serverEnv();
+  const site = siteIdentity(env);
   return (
-    <article className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t('policy.termsTitle')}</h1>
-      <p className="text-sm text-[var(--muted)]">{t('policy.draft')}</p>
-      <ul className="list-disc pl-6">
-        {tList('policy.termsPoints').map((p) => (
-          <li key={p}>{p}</li>
-        ))}
-      </ul>
-    </article>
+    <PolicyView
+      policy={terms({
+        siteName: site.name,
+        siteUrl: site.origin,
+        grievanceName: env.GRIEVANCE_NAME,
+        grievanceEmail: env.GRIEVANCE_EMAIL,
+      })}
+    />
   );
 }
