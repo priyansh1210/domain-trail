@@ -33,6 +33,9 @@ export const rateLimits = {
   feedbackPerHour: 60,
   /** Signed-out saving creates an anonymous session; a visitor needs one, not dozens (spec 011 §5.6). */
   anonymousSessionsPerHour: 5,
+  /** Contact form (spec 013 FR-PRIV-007): enough to write, not enough to spam. */
+  contactPerHour: 3,
+  contactMessageMax: 4000,
   eventsPerHour: 120,
   snapshotPerMinute: 60,
   requestBodyMaxBytes: 16 * 1024,

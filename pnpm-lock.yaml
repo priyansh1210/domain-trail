@@ -223,6 +223,9 @@ importers:
       '@domains-all/log':
         specifier: workspace:*
         version: link:../../packages/log
+      '@domains-all/metrics':
+        specifier: workspace:*
+        version: link:../../packages/metrics
       '@domains-all/pricing':
         specifier: workspace:*
         version: link:../../packages/pricing

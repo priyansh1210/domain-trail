@@ -61,7 +61,16 @@ export interface AdminOverview {
   perDay: Array<{ day: string; saves: number; watches: number }>;
 }
 
+export interface ContactMessage {
+  id: string;
+  email: string;
+  message: string;
+  createdAt: string;
+}
+
 export interface OpsOverview {
+  /** Messages from the contact page, newest first (answer within 30 days, FR-PRIV-007). */
+  messages: ContactMessage[];
   jobs: Array<{
     job: string;
     status: string;
@@ -127,6 +136,8 @@ export interface AccountStore {
   moveItems(fromAnonymousId: string, to: SessionUser): Promise<MoveResult>;
   adminOverview(): Promise<AdminOverview>;
   opsOverview(): Promise<OpsOverview>;
+  /** Contact page message (no session needed; kept 1 year, spec 012). */
+  addContactMessage(m: { email: string; message: string }): Promise<string>;
 }
 
 const nowIso = () => new Date().toISOString();
@@ -343,8 +354,23 @@ export class MemoryAccountStore implements AccountStore {
     };
   }
 
+  readonly contact: ContactMessage[] = [];
+
   async opsOverview(): Promise<OpsOverview> {
-    return { jobs: [], reports: [], jevTokensThisMonth: 0, dbMb: null };
+    return {
+      messages: [...this.contact].reverse(),
+      jobs: [],
+      reports: [],
+      jevTokensThisMonth: 0,
+      dbMb: null,
+    };
+  }
+
+  async addContactMessage(m: { email: string; message: string }) {
+    if (this.contact.length > 1000) this.contact.shift();
+    const row = { id: String(this.contact.length + 1), ...m, createdAt: nowIso() };
+    this.contact.push(row);
+    return row.id;
   }
 }
 
@@ -763,9 +789,22 @@ export class SupabaseAccountStore implements AccountStore {
     const month = new Date().toISOString().slice(0, 8) + '01';
     const tokens = check(await this.admin.rpc('month_jev_tokens', { p_month: month })) as
       number | string | null;
+    const messages = check(
+      await this.admin
+        .from('contact_messages')
+        .select('id,email,message,created_at')
+        .order('created_at', { ascending: false })
+        .limit(50),
+    ) as Array<{ id: number; email: string; message: string; created_at: string }>;
     const cleanup = jobs.find((j) => j.job === 'cleanup' && j.status === 'success');
     const dbMb = (cleanup?.stats as { dbMb?: number } | null)?.dbMb ?? null;
     return {
+      messages: messages.map((m) => ({
+        id: String(m.id),
+        email: m.email,
+        message: m.message,
+        createdAt: m.created_at,
+      })),
       jobs: jobs.map((j) => ({
         job: j.job,
         status: j.status,
@@ -778,5 +817,16 @@ export class SupabaseAccountStore implements AccountStore {
       jevTokensThisMonth: Number(tokens ?? 0),
       dbMb,
     };
+  }
+
+  async addContactMessage(m: { email: string; message: string }) {
+    const r = check(
+      await this.admin
+        .from('contact_messages')
+        .insert({ email: m.email, message: m.message })
+        .select('id')
+        .single(),
+    ) as { id: number };
+    return String(r.id);
   }
 }

@@ -186,8 +186,12 @@ export function buildServices(env: ServerEnv): Services {
   };
 }
 
-let instance: Services | undefined;
+/**
+ * One instance per server process. Kept on globalThis because pages and route handlers are bundled separately and
+ * would otherwise each get their own copy (mock mode keeps saved items and messages in memory).
+ */
 export function services(): Services {
-  instance ??= buildServices(serverEnv());
-  return instance;
+  const g = globalThis as { __domainsAllServices?: Services };
+  g.__domainsAllServices ??= buildServices(serverEnv());
+  return g.__domainsAllServices;
 }
