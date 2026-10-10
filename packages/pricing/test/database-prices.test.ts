@@ -12,10 +12,10 @@ const rows = Object.entries(priceSnapshot.prices as unknown as Record<string, [n
 );
 
 function server(opts: { pricesAt?: string; dbDown?: boolean; porkbun?: 'ok' | 'down' }) {
-  const calls: string[] = [];
+  const hosts = new Set<string>(); // hosts asked, looked up exactly
   const fetchFn = (async (input: string | URL | Request) => {
     const url = new URL(String(input));
-    calls.push(url.host); // hosts asked, compared exactly
+    hosts.add(url.host);
     if (url.host === 'db.example.supabase.co') {
       if (opts.dbDown) return new Response('{}', { status: 503 });
       if (url.pathname.endsWith('/tld_prices')) {
@@ -60,7 +60,7 @@ function server(opts: { pricesAt?: string; dbDown?: boolean; porkbun?: 'ok' | 'd
       },
     });
   }) as typeof fetch;
-  return { calls, fetchFn };
+  return { hosts, fetchFn };
 }
 
 describe('database price list', () => {
@@ -75,21 +75,21 @@ describe('database price list', () => {
 
 describe('createPriceSource with the database', () => {
   it('uses a fresh database copy without asking Porkbun', async () => {
-    const { calls, fetchFn } = server({});
+    const { hosts, fetchFn } = server({});
     const src = createPriceSource({ live: true, fetchFn, now: () => NOW, database: DB });
     const book = await src.ensureFresh(5000);
     expect(book.pricesAt).toBe('2026-10-10T01:00:05.000Z');
     expect(book.fx.asOf).toBe('2026-10-09');
     expect(book.fx.rates.INR).toBe(88.1);
     expect(src.status()).toMatchObject({ source: 'database', lastRefresh: { ok: true } });
-    expect(calls.includes('api.porkbun.com')).toBe(false);
+    expect(hosts.has('api.porkbun.com')).toBe(false);
   });
 
   it('asks Porkbun when the database copy is old', async () => {
-    const { calls, fetchFn } = server({ pricesAt: '2026-10-08T01:00:00Z', porkbun: 'ok' });
+    const { hosts, fetchFn } = server({ pricesAt: '2026-10-08T01:00:00Z', porkbun: 'ok' });
     const src = createPriceSource({ live: true, fetchFn, now: () => NOW, database: DB });
     const book = await src.ensureFresh(5000);
-    expect(calls.includes('api.porkbun.com')).toBe(true);
+    expect(hosts.has('api.porkbun.com')).toBe(true);
     expect(src.status().source).toBe('porkbun');
     expect(book.prices.get('com')?.registerCents).toBe(1200);
   });
