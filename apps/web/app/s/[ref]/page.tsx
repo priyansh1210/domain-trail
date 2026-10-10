@@ -16,7 +16,8 @@ export default async function ResultsPage({ params }: { params: Promise<{ ref: s
           {t('results.newSearch')}
         </Link>
       </div>
-      <ResultsView searchRef={decodeURIComponent(ref)} />
+      {/* A new results link gets a fresh view (filters, tabs, open chip editor do not carry over). */}
+      <ResultsView key={ref} searchRef={decodeURIComponent(ref)} />
     </div>
   );
 }

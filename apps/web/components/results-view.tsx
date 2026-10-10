@@ -146,6 +146,8 @@ export function ResultsView({ searchRef }: { searchRef: string }) {
   const humanToken = useCallback(async () => (await human.current?.token()) ?? 'none', []);
   const session = useAccount((s) => s.session);
   const [editing, setEditing] = useState(false);
+  /** Set when this view hands over to another search: it must stop touching the address bar. */
+  const leaving = useRef(false);
   const canEdit = Boolean(session?.user && !session.user.isAnonymous);
 
   // Saved names and searches of this browser (stars and the Save button show their state).
@@ -198,10 +200,14 @@ export function ResultsView({ searchRef }: { searchRef: string }) {
     if (!urlLoaded.current) return;
     const timer = setTimeout(() => {
       const qs = paramsFromFilters({ ...filters, cur: currency, tab });
-      window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+      // Always this search's own address: a relative "?…" could land on the previous search while the router is
+      // still switching to a new one (seen after editing the features, 2026-10-10).
+      const path = `/s/${encodeURIComponent(searchRef)}`;
+      if (leaving.current || window.location.pathname !== path) return;
+      window.history.replaceState(null, '', qs ? `${path}?${qs}` : path);
     }, 300);
     return () => clearTimeout(timer);
-  }, [filters, currency, tab]);
+  }, [filters, currency, tab, searchRef]);
 
   const chooseCurrency = useCallback((c: string) => {
     setCurrency(c);
@@ -335,7 +341,14 @@ export function ResultsView({ searchRef }: { searchRef: string }) {
                 )}
               </div>
               {editing && view?.profile ? (
-                <ChipEditor profile={view.profile} searchRef={searchRef} onCancel={() => setEditing(false)} />
+                <ChipEditor
+                  profile={view.profile}
+                  searchRef={searchRef}
+                  onCancel={() => setEditing(false)}
+                  onLeave={() => {
+                    leaving.current = true;
+                  }}
+                />
               ) : (
                 <>
                   <Chips view={view ?? { phase: 'starting' }} />
