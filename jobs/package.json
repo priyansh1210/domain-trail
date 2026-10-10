@@ -21,7 +21,7 @@
     "@electric-sql/pglite": "^0.5.8",
     "fflate": "^0.8.3",
     "postgres": "^3.4.9",
-    "tldts": "7.4.15"
+    "tldts": "7.4.16"
   },
   "devDependencies": {
     "vitest": "^5.0.3"
