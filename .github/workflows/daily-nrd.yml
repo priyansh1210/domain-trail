@@ -1,0 +1,27 @@
+# Spec 010 tech §5.3 (FR-REF-003, 004, 005; R-07): newly registered names mark cached answers taken; only trends are kept.
+name: daily-nrd
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Redo work already done today
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: job-nrd-ingest
+  cancel-in-progress: false
+
+jobs:
+  run:
+    uses: ./.github/workflows/run-job.yml
+    with:
+      job: nrd-ingest
+      force: ${{ inputs.force || false }}
+    secrets: inherit

@@ -57,6 +57,8 @@ export interface VerifyOutcome {
   stats: { checked: number; registrable: number; free: number; cached: number; unknown: number };
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 function scoredItem(pair: Pair, check: CheckResult, ctx: VerifyContext): ResultItem {
   const priced = priceFor(
     { label: pair.label, tld: pair.tld, status: check.status, commonWord: ctx.commonWord?.(pair.label) },
@@ -78,6 +80,13 @@ function scoredItem(pair: Pair, check: CheckResult, ctx: VerifyContext): ResultI
     status: check.status,
     checkedAt: check.checkedAt,
     score: Math.round((finalScore(pair, P) - penalty) * 1000) / 1000,
+    signals: {
+      R: round2(pair.ranked.R),
+      Q: round2(pair.ranked.quality),
+      T: round2(pair.T),
+      K: round2(pair.ranked.keywordCoverage),
+      P: round2(P),
+    },
     reasons,
     strategy: pair.ranked.strategy,
     source: pair.ranked.source,

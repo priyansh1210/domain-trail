@@ -75,6 +75,10 @@ export const pricing = {
   priceStaleHours: 30,
   /** Server instances re-fetch the public price list and FX rates this often (M4 decision 3). */
   refreshHours: 12,
+  /** With the database configured (M5): re-read the daily price job's tables this often (cheap, two requests). */
+  databaseRefreshMinutes: 60,
+  /** A database list younger than this is used as is; older, the server also asks Porkbun directly. */
+  databaseFreshHours: 26,
   displayCurrencies: 'all' as 'all' | readonly string[],
 } as const;
 
@@ -151,4 +155,41 @@ export const observability = {
   dataStaleWarningHours: 30,
   healthCacheSeconds: 30,
   healthDependencyTimeoutMs: 2000,
+} as const;
+
+/** Spec 015 tech §5.1 meter limits checked daily by the clean-up job (FR-OBS-003). */
+export const budgets = {
+  emailsPerDay: 100,
+  emailsPerMonth: 3000,
+  /** Spec 012 §5.3: shorter retention above 60 % of the 500 MB database. */
+  mitigation: { domainCheckGraceDays: 14, anonymousSearchDays: 3 },
+} as const;
+
+/** Spec 010 (daily refresh): schedules live in the workflows; these are the job-side limits. */
+export const jobs = {
+  /** A run that has not finished after this long is treated as abandoned (workflows stop at 45 min). */
+  leaseMinutes: 50,
+  downloadAttempts: 3,
+  downloadBackoffMs: 30_000,
+  /** Newly registered names (R-07): whoisds keeps 4 free daily files; look back at most this many days. */
+  nrd: {
+    urlTemplate: 'https://www.whoisds.com//whois-database/newly-registered-domains/{file}/nrd',
+    lookbackDays: 4,
+    minNames: 1_000,
+    maxBytes: 20_000_000,
+    topTokens: 2_000,
+    topAffixes: 200,
+    chunk: 5_000,
+  },
+  /** Popular sites for the brand check (R-12): Majestic Million, CC BY 3.0. */
+  brandList: {
+    url: 'https://downloads.majestic.com/majestic_million.csv',
+    topSites: 100_000,
+    minLabels: 10_000,
+    minLength: 4,
+  },
+  /** Days a dataset may go without a successful run before the Status page and alerts call it stale. */
+  staleAfterHours: { daily: 30, weekly: 8 * 24 + 6 },
+  /** Monthly weight proposal (spec 008 §5.8): needs at least this many labelled results. */
+  tuneWeightsMinExamples: 200,
 } as const;

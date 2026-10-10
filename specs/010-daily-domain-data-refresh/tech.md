@@ -219,3 +219,31 @@ NRD intersection in memory: 200k names Set ≈ 20 MB — fine on the 7 GB runner
 - Risk: GitHub disables scheduled workflows in public repositories after 60 days without repository activity.
   Mitigation: the weekly eval job commits nothing, so the owner gets GitHub's warning e-mail; the Status page
   also shows data ages; re-enable with one click (documented in spec 017 runbook).
+
+## 15. Implementation notes (M5, 2026-10-10)
+- **Lock.** `runJob` takes a lease row in `job_runs` under `pg_advisory_xact_lock` instead of a session
+  `pg_try_advisory_lock`: Supabase's transaction pooler may run each statement on a different server connection, so
+  session locks are unreliable there. A `running` row older than 50 minutes counts as abandoned. Workflows also use
+  `concurrency` groups.
+- **Secrets.** Jobs run in a GitHub environment `jobs` (main branch only, no reviewer) holding `SUPABASE_DB_URL` and
+  the optional `RESEND_API_KEY` / `OWNER_ALERT_EMAIL`; `production` keeps its reviewer. Without the secret a job
+  ends with a "not configured" warning instead of failing daily.
+- **Popular sites (§5.4):** the Majestic Million (CC BY 3.0) replaces Tranco (research R-12): Tranco states no
+  licence and mixes CC BY-NC / CC BY-SA inputs. Ordinary words, plurals and runs of dictionary words are left out
+  (`bookstore`, `petsupplies`), leaving about 54,000 names from the top 100,000 sites (measured 2026-10-10). The
+  server loads them with the service-role function `brand_label_list()`; golden-set NDCG stayed 0.98 with them.
+- **Newly registered names (§5.3):** whoisds free file (research R-07), `.../newly-registered-domains/
+  {base64("YYYY-MM-DD.zip")}/nrd`, about 70,000 names a day (a sample), 4 days listed. A day counts as done once
+  `keyword_trends` has its `tld` rows; missing days are retried while the page still lists them. The job fails only
+  when the latest processed day is older than the day before yesterday.
+- **Bulk writes** pass one JSON text parameter (`jsonb_to_recordset($1::text::jsonb)`). Typed `$1::jsonb`, the
+  production driver JSON-encodes the string a second time (found with a real wire-protocol test before release).
+- **Tests and dry runs.** `pnpm job <name> --dry-run` uses recorded sources and an in-process Postgres (PGlite) with
+  all migrations; `--fixtures` uses recorded sources with a real database. CI runs every job that way against its
+  local Supabase stack (`db` job), so the production driver is exercised without going online.
+- **Status page** reads `public_job_status()` (job names, run times, failures in a row; no statistics or error
+  text) with the public key, so it also works while the site runs in mock mode.
+- **Watchlist job (§5.5)** moves to milestone M5b with sign-in; `nrd-ingest` already flags watched names.
+- **Backups** use `supabase db dump` (schema, then data; matching `pg_dump` in Docker) plus `auth.users`
+  (id, e-mail, anonymous flag, created) as CSV, packed and encrypted with `age`; the workflow uploads only the
+  encrypted file.

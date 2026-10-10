@@ -280,3 +280,14 @@ DB size trend, row counts per table (weekly), retention deletions per run, backu
 ## 14. Risks and research links
 - R-09: Supabase free limits (size, pause, backups).
 - Risk: traffic growth beyond ~300 searches/day stresses the 500 MB limit → retention auto-tuning; next step would be a paid plan (owner decision).
+
+## 15. Implementation notes (M5, 2026-10-10)
+- Migration `202610100900_m5_ops.sql` adds two server-only operations tables, `job_state` (small per-job state
+  changed in the same transaction as the job's data, e.g. the last day of feedback rolled up) and `alert_log`
+  (alert de-duplication), plus `public_job_status()` (callable with the public key; names and times only) and
+  `brand_label_list()` (service role only).
+- Feedback is rolled into `feedback_monthly` one finished day at a time while `search_results` still exist (they
+  are kept 7 days), instead of at the 13-month cut-off when section and strategy could no longer be joined.
+- `search_metrics_daily.cache_hits` stays empty: a cache hit returns the stored search without a new row.
+- Each result's score components (R, Q, T, K, P; 2 decimals) are stored inside `search_results.signals` for the
+  monthly weight proposal (spec 008 §5.8).

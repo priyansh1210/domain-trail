@@ -95,7 +95,14 @@ describe('POST /api/search', () => {
     const s = svc();
     const first = await events(await handleSearch(post(body()), s));
     const second = await events(await handleSearch(post(body()), s));
-    expect(second.map((e) => e.event)).toEqual(['search_created', 'features', 'pricing', 'batch', 'done']);
+    // Notices depend on the calendar (the recorded price snapshot turns "stale" 30 hours after it was taken).
+    expect(second.map((e) => e.event).filter((e) => e !== 'notice')).toEqual([
+      'search_created',
+      'features',
+      'pricing',
+      'batch',
+      'done',
+    ]);
     expect(
       resultsOf(second)
         .map((r) => r.fqdn)

@@ -3,13 +3,16 @@ export {
   createPriceSource,
   isStale,
   policyFor,
+  policySeed,
   type PriceBook,
+  type PriceDataSource,
   priceAgeHours,
   type PriceSource,
   snapshotBook,
   type TldPolicy,
 } from './book';
 export * from './client';
+export { loadDatabaseFx, loadDatabasePrices, type PublicDatabase } from './database';
 export {
   type PriceInput,
   type PricedResult,

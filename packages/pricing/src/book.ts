@@ -7,6 +7,7 @@ import fxSnapshot from '../data/fx-rates.json';
 import priceSnapshot from '../data/porkbun-prices.json';
 import policyData from '../data/tld-policies.json';
 import type { FxTable } from './client';
+import { loadDatabaseFx, loadDatabasePrices, type PublicDatabase } from './database';
 import {
   FRANKFURTER_URL,
   parseFrankfurter,
@@ -35,6 +36,11 @@ const POLICIES = policyData.policies as Record<string, TldPolicy>;
 
 export function policyFor(tld: string): TldPolicy {
   return POLICIES[tld] ?? DEFAULT_POLICY;
+}
+
+/** Every reviewed extension policy and the review date (seed for the `tld_policies` table, spec 010 job). */
+export function policySeed(): { reviewedAt: string; policies: Readonly<Record<string, TldPolicy>> } {
+  return { reviewedAt: policyData.reviewedAt, policies: POLICIES };
 }
 
 export interface PriceBook {
@@ -70,13 +76,24 @@ export function isStale(book: PriceBook, now = Date.now()): boolean {
   return priceAgeHours(book, now) > pricing.priceStaleHours;
 }
 
-export function createPriceSource(opts: { live: boolean; fetchFn?: typeof fetch; now?: () => number }) {
+export type PriceDataSource = 'database' | 'porkbun' | 'snapshot';
+
+export function createPriceSource(opts: {
+  live: boolean;
+  fetchFn?: typeof fetch;
+  now?: () => number;
+  /** Daily price job tables (M5). Without it the server asks Porkbun and Frankfurter itself. */
+  database?: PublicDatabase;
+}) {
   const now = opts.now ?? Date.now;
   let book = snapshotBook();
+  let source: PriceDataSource = 'snapshot';
   let tried = opts.live ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY; // live: never tried yet
   let inFlight: Promise<void> | undefined;
-  const maxAge = pricing.refreshHours * 3600_000;
+  const maxAge = opts.database ? pricing.databaseRefreshMinutes * 60_000 : pricing.refreshHours * 3600_000;
   const RETRY_AFTER_FAILURE_MS = 10 * 60_000;
+  const youngerThan = (iso: string, hours: number) => now() - Date.parse(iso) < hours * 3600_000;
+  const message = (e: unknown) => String((e as Error)?.message ?? e);
 
   async function load(): Promise<void> {
     const get = async (url: string) => {
@@ -84,24 +101,61 @@ export function createPriceSource(opts: { live: boolean; fetchFn?: typeof fetch;
       if (!res?.ok || !res.text) throw new Error(`${url} → ${res?.status ?? 'no answer'}`);
       return JSON.parse(res.text) as unknown;
     };
-    const [prices, fx] = await Promise.allSettled([
-      get(PORKBUN_PRICING_URL).then(parsePorkbun),
-      get(FRANKFURTER_URL).then(parseFrankfurter),
+    const errors: { pricesError?: string; fxError?: string } = {};
+    const [dbPrices, dbFx] = opts.database
+      ? await Promise.allSettled([
+          loadDatabasePrices(opts.database, opts.fetchFn),
+          loadDatabaseFx(opts.database, opts.fetchFn),
+        ])
+      : [undefined, undefined];
+    const fromDb = dbPrices?.status === 'fulfilled' ? dbPrices.value : undefined;
+    const fxDb = dbFx?.status === 'fulfilled' ? dbFx.value : undefined;
+
+    // Ask the registrar and the rate service directly only when the database copy is missing or old.
+    const needPrices = !fromDb || !youngerThan(fromDb.pricesAt, pricing.databaseFreshHours);
+    const needFx = !fxDb || !youngerThan(`${fxDb.asOf}T00:00:00Z`, 4 * 24); // no ECB rates at weekends
+    const [direct, fxDirect] = await Promise.allSettled([
+      needPrices ? get(PORKBUN_PRICING_URL).then(parsePorkbun) : Promise.resolve(undefined),
+      needFx ? get(FRANKFURTER_URL).then(parseFrankfurter) : Promise.resolve(undefined),
     ]);
-    book = {
-      ...book,
-      ...(prices.status === 'fulfilled'
-        ? { prices: prices.value, pricesAt: new Date(now()).toISOString() }
-        : {}),
-      ...(fx.status === 'fulfilled' ? { fx: fx.value } : {}),
-    };
-    const why = (r: PromiseSettledResult<unknown>) =>
-      r.status === 'rejected' ? String((r.reason as Error)?.message ?? r.reason) : undefined;
+
+    const candidates: Array<{
+      prices: ReadonlyMap<string, TldPrice>;
+      pricesAt: string;
+      from: PriceDataSource;
+    }> = [];
+    if (fromDb) candidates.push({ ...fromDb, from: 'database' });
+    if (direct.status === 'fulfilled' && direct.value)
+      candidates.push({ prices: direct.value, pricesAt: new Date(now()).toISOString(), from: 'porkbun' });
+    const best = candidates.sort((a, b) => Date.parse(b.pricesAt) - Date.parse(a.pricesAt))[0];
+    if (best && Date.parse(best.pricesAt) >= Date.parse(book.pricesAt)) {
+      book = { ...book, prices: best.prices, pricesAt: best.pricesAt };
+      source = best.from;
+    }
+    const fx = [fxDb, fxDirect.status === 'fulfilled' ? fxDirect.value : undefined]
+      .filter((f): f is FxTable => !!f)
+      .sort((a, b) => (a.asOf < b.asOf ? 1 : -1))[0];
+    if (fx && fx.asOf >= book.fx.asOf) book = { ...book, fx };
+
+    if (!best)
+      errors.pricesError = [
+        dbPrices?.status === 'rejected' ? `database: ${message(dbPrices.reason)}` : '',
+        direct.status === 'rejected' ? message(direct.reason) : '',
+      ]
+        .filter(Boolean)
+        .join('; ');
+    if (!fx)
+      errors.fxError = [
+        dbFx?.status === 'rejected' ? `database: ${message(dbFx.reason)}` : '',
+        fxDirect.status === 'rejected' ? message(fxDirect.reason) : '',
+      ]
+        .filter(Boolean)
+        .join('; ');
     refresh = {
       at: new Date(now()).toISOString(),
-      ok: prices.status === 'fulfilled' && fx.status === 'fulfilled',
-      ...(why(prices) ? { pricesError: why(prices) } : {}),
-      ...(why(fx) ? { fxError: why(fx) } : {}),
+      ok: !!best && !!fx,
+      ...(errors.pricesError ? { pricesError: errors.pricesError } : {}),
+      ...(errors.fxError ? { fxError: errors.fxError } : {}),
     };
   }
 
@@ -137,7 +191,7 @@ export function createPriceSource(opts: { live: boolean; fetchFn?: typeof fetch;
     settled: () => inFlight ?? Promise.resolve(),
     /** When prices and FX rates were fetched, and how the last refresh went. */
     status() {
-      return { pricesAt: book.pricesAt, fxAsOf: book.fx.asOf, live: opts.live, lastRefresh: refresh };
+      return { pricesAt: book.pricesAt, fxAsOf: book.fx.asOf, live: opts.live, source, lastRefresh: refresh };
     },
   };
 }

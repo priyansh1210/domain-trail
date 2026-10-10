@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Implements | spec 017 FR-INF-006, FR-INF-011, FR-INF-013 |
-| Last updated | 2026-10-03 |
+| Last updated | 2026-10-10 |
 
 Part A runs the site on your own computer with fake ("mock") data: no accounts or keys needed.
 Part B creates the free online accounts, in order, when you are ready to put the site on the internet.
@@ -84,6 +84,36 @@ them and keep the recovery codes somewhere offline.
     The full list with explanations is in `.env.example`.
 13. Run the **migrate** workflow (approve it in the `production` environment), then set `MOCK_EXTERNALS=0` in
     Vercel and redeploy. `/api/health` should now show `"mode":"live"`.
+
+## Part C — Daily data jobs (milestone M5, about 20 minutes)
+
+The jobs run on GitHub's free runners every day and write to the database. They need their own GitHub
+environment, because a daily job cannot wait for your approval every morning.
+
+1. **Apply the database changes**: Actions → **migrate** → *Run workflow* → approve it in `production`. (The only
+   run so far, on 2026-10-03, failed because the database did not exist yet.)
+2. **Create the `jobs` environment**: Settings → Environments → *New environment* → name `jobs`.
+   - Deployment branches and tags → **Selected branches** → add `main` (other branches and forks cannot use it).
+   - No required reviewer.
+   - Environment secret `SUPABASE_DB_URL`: the same pooler connection string as in `production`.
+3. Optional — **alert e-mails** when a job fails twice in a row (GitHub already e-mails you about every failed
+   scheduled run): create a free Resend account with the address you want alerts on, make an API key, then add
+   the secrets `RESEND_API_KEY` and `OWNER_ALERT_EMAIL` (that same address) to the `jobs` environment.
+4. **Backups** — on your PC, install `age` (Windows: `winget install FiloSottile.age`) and run
+   `age-keygen -o backup-key.txt`. Keep `backup-key.txt` offline (USB stick or password manager): it is the only
+   way to open a backup. Copy the line starting with `age1…` (the public key) into Settings → Secrets and
+   variables → Actions → **Variables** → `BACKUP_AGE_PUBLIC_KEY`. A public key is safe to share.
+5. Optional repository **variables** (same page): `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_SITE_NAME`, so data
+   providers see the site address in our downloads (otherwise they see the repository address).
+6. **First runs**: Actions → run each of `daily-tld-registry`, `daily-prices`, `daily-nrd`,
+   `daily-free-providers`, `weekly-brand-list`, `daily-cleanup` and `weekly-backup` once (*Run workflow*). Then
+   open https://domain-trail.vercel.app/status: every dataset should show "Up to date", and
+   `/api/health` should show `"pricesSource":"database"` within an hour.
+
+What runs when (UTC): extension registry 00:30 · prices 01:00 · newly registered names 02:00 · free providers
+02:30 · popular sites Sunday 03:00 · clean-up 05:00 · backup Sunday 05:30 · usage report on the 1st · ranking
+weight proposal on the 2nd. Runbooks for re-running jobs, restoring a backup and other chores are in
+`docs/runbooks/`.
 
 ## Moving to your own domain later
 Add the domain in Vercel → change `NEXT_PUBLIC_SITE_URL` → update the Supabase Site URL and redirect URL →

@@ -6,6 +6,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./data/*": "./data/*",
     "./client": "./src/client.ts"
   },
   "scripts": {

@@ -25,6 +25,7 @@ import {
   type Idempotency,
   type Limiter,
 } from './limits';
+import { createBrandListSource } from './brand-list';
 import {
   type FeedbackStore,
   MemoryFeedbackStore,
@@ -58,10 +59,14 @@ export interface Services {
   checker: Checker;
   freeChecker: FreeChecker;
   prices: PriceSource;
+  /** Popular-site names loaded into the brand check (0 = curated seed only). */
+  brandCount(): number;
   /** Publication date of the RDAP directory in use (health check). */
   rdapPublication(): string;
-  /** Refreshes prices, FX and the RDAP directory when due, waiting at most `maxWaitMs` (inside the request: the host
-   *  freezes work left running after a response). */
+  /** When this instance last downloaded the RDAP directory (Status page), if it has. */
+  rdapRefreshedAt(): string | undefined;
+  /** Refreshes prices, FX, the RDAP directory and the popular-site list when due, waiting at most `maxWaitMs`
+   *  (inside the request: the host freezes work left running after a response). */
   refreshPublicData(maxWaitMs: number): Promise<void>;
   feedback: FeedbackStore;
   limitsEnforced: boolean;
@@ -89,14 +94,27 @@ export function buildServices(env: ServerEnv): Services {
   const userAgent = `${site.name.replace(/[^\w.-]/g, '')}/${PIPELINE_VERSION} (+${site.origin})`;
 
   const directory = createDirectorySource({ live: publicLive, fetchFn });
-  const prices = createPriceSource({ live: publicLive, fetchFn });
+  // The daily price job's tables are public reference data, read with the public key even in mock mode
+  // (tasks/M5-freshness.md decision 2); fixtures never touch a database.
+  const database =
+    publicLive && env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      ? { url: env.NEXT_PUBLIC_SUPABASE_URL, anonKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY }
+      : undefined;
+  const prices = createPriceSource({ live: publicLive, fetchFn, ...(database ? { database } : {}) });
+  const brands = createBrandListSource(sb);
 
   return {
     env,
     rdapPublication: () => directory.get().publication,
+    rdapRefreshedAt: () => directory.refreshedAt(),
     async refreshPublicData(maxWaitMs) {
-      await Promise.all([prices.ensureFresh(maxWaitMs), directory.ensureFresh(maxWaitMs)]);
+      await Promise.all([
+        prices.ensureFresh(maxWaitMs),
+        directory.ensureFresh(maxWaitMs),
+        brands.ensureFresh(maxWaitMs),
+      ]);
     },
+    brandCount: () => brands.count(),
     checker: createChecker({
       directory,
       userAgent,

@@ -161,3 +161,12 @@ Counters: limited requests by bucket, refusals by category, strict-mode activati
 
 ## 14. Risks and research links
 - R-12 (brand list source). Risk: over-blocking common words that are brands → dictionary allowance + Jev second opinion + reports.
+
+## 15. Implementation notes (M5, 2026-10-10)
+- Brand list source (R-12): Majestic Million (CC BY 3.0) instead of Tranco; see spec 010 tech §15.
+- `setPopularBrands(labels)` adds the weekly list to every later check in the server process. Exact and contains
+  rules use set look-ups over the label's substrings; the one-typo rule uses a one-letter-deletion index over the
+  curated brands plus the 10,000 best-ranked popular sites. 1,000 labels against 50,000 names stay well under the
+  100 ms budget (`brand-risk.test.ts`).
+- Description brand tokens (`brandTokensIn`) still use the curated list only, so a visitor's own coined business
+  name that happens to match a small popular site is not banned outright.

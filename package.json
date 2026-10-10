@@ -17,7 +17,8 @@
     "trace:check": "node scripts/trace-check.mjs",
     "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm trace:check",
     "eval:pipeline": "tsx packages/core/scripts/eval-pipeline.mts",
-    "eval:availability": "tsx packages/core/scripts/availability-accuracy.mts"
+    "eval:availability": "tsx packages/core/scripts/availability-accuracy.mts",
+    "job": "tsx jobs/_lib/main.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

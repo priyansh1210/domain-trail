@@ -153,3 +153,12 @@ Telemetry adds one JSON column write per search (already writing `searches`), Se
 
 ## 14. Risks and research links
 - R-09: current limits of Sentry, UptimeRobot, Upstash, Vercel Hobby, GitHub Actions.
+
+## 15. Implementation notes (M5, 2026-10-10)
+- `packages/metrics`: `sendAlert` (Resend e-mail to the owner's own address, or a chat webhook with
+  `ALERT_CHANNEL=chat` + `ALERT_WEBHOOK_URL`) and `meterAlerts` (50/80/100 % and month-end projection).
+- Info-level alerts (50 %) are only logged; warnings and critical alerts are delivered, and so is the monthly report.
+- Jobs de-duplicate alerts in the `alert_log` table (once per key per 6 h); the web will use Upstash or memory.
+- Meters checked daily by `cleanup`: database size, Jev tokens, evaluation tokens, e-mails per day and month.
+  RDAP/DoH/Datamuse caps are still enforced in each server instance (no shared counters yet).
+- Sentry, UptimeRobot and Cloudflare Web Analytics need owner accounts: milestone M6.
