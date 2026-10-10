@@ -33,6 +33,12 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm trace:check
+      - name: Scheduled jobs against fixtures and an in-process database (dry run)
+        run: pnpm --filter @domains-all/jobs dry-run
+      - name: Lint workflow files
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint -color
       - run: pnpm build
       - name: Install the browser for end-to-end tests
         run: pnpm --filter @domains-all/web exec playwright install --with-deps chromium
@@ -68,3 +74,12 @@ jobs:
         run: |
           pnpm exec supabase db diff --schema public > drift.sql
           if [ -s drift.sql ]; then cat drift.sql; exit 1; fi
+      - name: Scheduled jobs against this database with recorded sources (real driver, no internet)
+        env:
+          SUPABASE_DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          BACKUP_AGE_PUBLIC_KEY: age1qyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqs3290gq
+          LOG_LEVEL: warn
+        run: |
+          for job in tld-registry refresh-prices nrd-ingest refresh-free-providers brand-list cleanup usage-report tune-weights; do
+            pnpm job "$job" --fixtures --force
+          done

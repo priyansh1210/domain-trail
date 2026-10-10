@@ -1,0 +1,28 @@
+{
+  "name": "@domains-all/jobs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Scheduled jobs (spec 010): run by GitHub Actions with `pnpm job <name>`.",
+  "scripts": {
+    "typecheck": "tsc",
+    "test": "vitest run",
+    "dry-run": "tsx _lib/dry-run-all.ts"
+  },
+  "dependencies": {
+    "@domains-all/availability": "workspace:*",
+    "@domains-all/config": "workspace:*",
+    "@domains-all/core": "workspace:*",
+    "@domains-all/free-domains": "workspace:*",
+    "@domains-all/log": "workspace:*",
+    "@domains-all/metrics": "workspace:*",
+    "@domains-all/pricing": "workspace:*",
+    "@electric-sql/pglite": "^0.5.8",
+    "fflate": "^0.8.3",
+    "postgres": "^3.4.9",
+    "tldts": "7.4.15"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.3"
+  }
+}

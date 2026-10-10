@@ -228,7 +228,13 @@
   "footer": {
     "privacy": "Privacy",
     "terms": "Terms",
-    "disclaimer": "We recommend names; registrars sell them. Availability can change at any time."
+    "disclaimer": "We recommend names; registrars sell them. Availability can change at any time.",
+    "status": "Status",
+    "dataAge": "Domain data updated {age} ago",
+    "dataAgeStale": "Domain data last updated {age} ago — may be out of date",
+    "ageHours": "{n} h",
+    "ageUnderHour": "less than an hour",
+    "ageDays": "{n} days"
   },
   "policy": {
     "draft": "This is a short summary. The full policy will be published before the public launch.",
@@ -259,5 +265,54 @@
     "brandable": "Unique, brandable name",
     "hack": "The extension completes the word",
     "value": "Great price for this section"
+  },
+  "status": {
+    "title": "Status",
+    "intro": "How fresh the data behind the results is, and whether every part of a search is working. Data older than {hours} hours is highlighted.",
+    "dataHeading": "Data",
+    "servicesHeading": "Services",
+    "jobsHeading": "Daily jobs",
+    "sourcesHeading": "Sources",
+    "dataset": "Dataset",
+    "updated": "Updated",
+    "state": "State",
+    "fresh": "Up to date",
+    "staleLabel": "Older than expected",
+    "notYet": "Not refreshed yet",
+    "agoHours": "{n} h ago",
+    "agoUnderHour": "under 1 h ago",
+    "agoDays": "{n} days ago",
+    "jobLast": "Last success",
+    "jobFailures": "Failed runs in a row",
+    "noJobs": "The daily jobs have not reported yet.",
+    "generated": "Checked {time} UTC",
+    "names": {
+      "prices": "Registration prices",
+      "fx": "Currency rates",
+      "tlds": "Extensions and registry directory",
+      "nrd": "Newly registered names",
+      "freeProviders": "Free name providers",
+      "brandList": "Popular sites (brand protection)"
+    },
+    "serviceNames": {
+      "search": "Search",
+      "decisionModel": "AI ranking",
+      "availability": "Availability checks"
+    },
+    "serviceStates": {
+      "ok": "Working",
+      "degraded": "Limited (backup rules in use)",
+      "down": "Not working",
+      "budget_exhausted": "Paused for this month (budget used)",
+      "paused": "Paused (daily check limit reached)"
+    },
+    "sources": [
+      "Extensions and registry directory: IANA (data.iana.org).",
+      "Prices: Porkbun's public price list. Currency rates: European Central Bank reference rates via Frankfurter.",
+      "Availability: DNS (Cloudflare, Google) and each registry's RDAP service.",
+      "Newly registered names: the free daily list from WhoisDS — read once a day, not stored.",
+      "Popular sites: The Majestic Million by Majestic, CC BY 3.0 (majestic.com).",
+      "Free names: the public is-a.dev and js.org lists of taken names."
+    ]
   }
 }

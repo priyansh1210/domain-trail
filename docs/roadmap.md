@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | Approved (2026-10-03) |
-| Last updated | 2026-10-03 |
+| Last updated | 2026-10-10 |
 
 ## How work flows (spec-driven development)
 
@@ -53,6 +53,7 @@ Suggested milestones:
 | M3 Generate & judge | generation + ranking rounds + safety | NDCG@10 ≥ 0.6 offline |
 | M4 Verify & price | availability + pricing + free providers + sections + slider | accuracy sample ≥ 97% |
 | M5 Freshness & ops | daily jobs, status page, budgets, alerts, backups | 7 days of green jobs |
+| M5b Accounts | Google/GitHub sign-in, chip editing, saving for everyone, watchlist + in-app alerts, owner `/ops` views | sign-in and saving work end to end |
 | M6 Launch | privacy/terms, a11y pass, launch checklist | public launch |
 
 ### Phase 2 — Accounts and depth

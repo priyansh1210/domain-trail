@@ -33,6 +33,9 @@ export interface ResultItem {
     conditions: FreeConditions;
   };
   score: number;
+  /** Score components, 2 decimals (spec 008 §5.4): relevance, quality, extension fit, keyword coverage, price value.
+   *  Stored with the results so the monthly weight proposal can learn from feedback (FR-RANK-013). */
+  signals?: { R: number; Q: number; T: number; K: number; P: number };
   reasons: Reason[];
   strategy: string;
   source: 'jev' | 'deterministic';

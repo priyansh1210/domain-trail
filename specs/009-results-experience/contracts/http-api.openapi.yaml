@@ -192,6 +192,7 @@ paths:
                       fxAsOf: { type: string, format: date }
                       publicData: { type: string, enum: [live, fixture] }
                       priceRefresh: { type: string, enum: [ok, failed, not_yet] }
+                      pricesSource: { type: string, enum: [database, porkbun, snapshot], description: 'database = the daily price job (M5)' }
                       priceRefreshNote: { type: string, description: Public URL and status of a failed refresh }
                       rdapDirectory: { type: string, description: Publication time of the IANA RDAP directory in use }
   /webhooks/resend:

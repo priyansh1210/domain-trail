@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { siteIdentity } from '@domains-all/config';
+import { DataAge } from '@/components/data-age';
 import { t } from '@/lib/i18n';
 import './globals.css';
 
@@ -28,7 +29,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <footer className="border-t border-[var(--border)]">
           <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-4 text-sm text-[var(--muted)]">
             <p>{t('footer.disclaimer')}</p>
-            <nav aria-label="Footer" className="flex gap-4">
+            <nav aria-label="Footer" className="flex flex-wrap gap-4">
+              <DataAge
+                text={{
+                  status: t('footer.status'),
+                  dataAge: t('footer.dataAge'),
+                  dataAgeStale: t('footer.dataAgeStale'),
+                  hours: t('footer.ageHours'),
+                  underHour: t('footer.ageUnderHour'),
+                  days: t('footer.ageDays'),
+                }}
+              />
               <Link href="/privacy" className="underline">
                 {t('footer.privacy')}
               </Link>

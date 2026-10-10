@@ -14,6 +14,7 @@ const getHealth = cachedHealth(async () => {
     fxAsOf: p.fxAsOf,
     publicData: svc.env.PUBLIC_DATA_MODE,
     priceRefresh: !p.lastRefresh ? 'not_yet' : p.lastRefresh.ok ? 'ok' : 'failed',
+    pricesSource: p.source,
     ...(note ? { priceRefreshNote: note.slice(0, 200) } : {}),
     rdapDirectory: svc.rdapPublication(),
   });

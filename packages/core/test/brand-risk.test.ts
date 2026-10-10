@@ -1,6 +1,6 @@
 // Spec 014 tech §11 `brand-risk.test.ts` (FR-ABU-006, 007, 008; US-4): no brand look-alikes.
-import { describe, expect, it } from 'vitest';
-import { brandRisk, brandTokensIn, editDistance } from '../src/safety/brand-risk';
+import { afterAll, describe, expect, it } from 'vitest';
+import { brandRisk, brandTokensIn, editDistance, setPopularBrands } from '../src/safety/brand-risk';
 
 const risky = (label: string, opts = {}) => brandRisk(label, opts).risky;
 
@@ -49,5 +49,41 @@ describe('brand risk', () => {
     expect(editDistance('paypal', 'papyal')).toBe(1);
     expect(editDistance('google', 'gogole')).toBe(1);
     expect(editDistance('abc', 'xyz', 1)).toBe(2);
+  });
+});
+
+describe('popular-site names from the weekly list (spec 010 §5.4)', () => {
+  afterAll(() => setPopularBrands([]));
+
+  it('blocks names equal to, containing or one typo away from a popular site', () => {
+    expect(risky('kelvarodeals')).toBe(false);
+    setPopularBrands(['kelvaro', 'zimbuto', 'pravix']);
+    expect(brandRisk('kelvaro')).toMatchObject({ risky: true, rule: 'exact' });
+    expect(brandRisk('kelvarodeals')).toMatchObject({ risky: true, rule: 'contains', brand: 'kelvaro' });
+    expect(brandRisk('zimbtuo')).toMatchObject({ risky: true, rule: 'typo', brand: 'zimbuto' });
+    expect(risky('freshbakes')).toBe(false);
+  });
+
+  it('keeps description brand tokens to the curated list', () => {
+    setPopularBrands(['kelvaro']);
+    expect(brandTokensIn('A food blog, not like Kelvaro')).toEqual([]);
+  });
+
+  it('stays fast with 50,000 names (spec 014 §10: 1,000 labels < 100 ms)', () => {
+    const letters = 'bdfgklmnprstvz';
+    const vowels = 'aeiou';
+    let seed = 1;
+    const rand = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const coin = () =>
+      Array.from(
+        { length: 3 },
+        () => letters[Math.floor(rand() * 14)]! + vowels[Math.floor(rand() * 5)]!,
+      ).join('');
+    setPopularBrands(Array.from({ length: 50_000 }, coin));
+    brandRisk('warmup');
+    const labels = Array.from({ length: 1000 }, (_, i) => `${coin()}${i % 7 ? 'shop' : ''}`);
+    const t0 = performance.now();
+    for (const l of labels) brandRisk(l, { segments: [l] });
+    expect(performance.now() - t0).toBeLessThan(250);
   });
 });

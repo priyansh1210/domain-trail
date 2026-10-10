@@ -1,0 +1,50 @@
+# Spec 012 tech §5.4, spec 017 §5.5 (FR-DATA-008): weekly database dump, encrypted with the owner's `age` public key
+# (repository variable BACKUP_AGE_PUBLIC_KEY). Artifacts of a public repository can be downloaded by any signed-in
+# GitHub user, so only the encrypted file is uploaded; the private key never touches GitHub.
+name: weekly-backup
+
+on:
+  schedule:
+    - cron: '30 5 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: job-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: jobs
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install age (encryption)
+        run: sudo apt-get update -q && sudo apt-get install -y -q age
+      - name: Dump and encrypt
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OWNER_ALERT_EMAIL: ${{ secrets.OWNER_ALERT_EMAIL }}
+          BACKUP_AGE_PUBLIC_KEY: ${{ vars.BACKUP_AGE_PUBLIC_KEY }}
+          BACKUP_DIR: ${{ runner.temp }}/backup
+          SUPABASE_BIN: ${{ github.workspace }}/node_modules/.bin/supabase
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || format('{0}/{1}', github.server_url, github.repository) }}
+          LOG_LEVEL: warn
+        run: pnpm job backup
+      - name: Upload the encrypted backup (kept 28 days)
+        uses: actions/upload-artifact@v7
+        with:
+          name: backup-${{ github.run_id }}
+          path: ${{ runner.temp }}/backup/*.age
+          if-no-files-found: warn # nothing to upload until the jobs environment exists (G2)
+          retention-days: 28

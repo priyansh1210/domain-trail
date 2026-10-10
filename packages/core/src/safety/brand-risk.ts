@@ -85,37 +85,86 @@ export function withinOneEdit(a: string, b: string): boolean {
 }
 
 interface BrandIndex {
-  byLength: Map<number, string[]>; // strong brands of 6+ letters by length, for the one-typo rule
-  strong: string[]; // not ordinary words: exact, contains, typo rules apply
+  typo: Map<string, string[]>; // brands of 6+ letters under themselves and every one-letter deletion
+  strictTypo: string[]; // brands of 8+ letters for the two-edit rule in strict mode
+  strong: Set<string>; // not ordinary words: exact, contains, typo rules apply
   weak: Set<string>; // ordinary words too: only strict mode or next to security words
   all: Set<string>;
+  curated: Set<string>; // the curated seed only (description brand tokens)
 }
 
 const LONG_SECURITY_TERMS = [...SECURITY_TERMS].filter((s) => s.length >= 5);
 
-let index: BrandIndex | undefined;
-function brandIndex(extra: readonly string[] = []): BrandIndex {
-  if (index && extra.length === 0) return index;
-  const list = [...new Set([...BRANDS, ...extra].map((b) => b.toLowerCase()))];
-  const strongList = list.filter((b) => !WEAK_BRANDS.has(b));
-  const byLength = new Map<number, string[]>();
-  for (const b of strongList)
-    if (b.length >= 6) byLength.set(b.length, [...(byLength.get(b.length) ?? []), b]);
-  const built: BrandIndex = {
-    byLength,
-    strong: strongList,
-    weak: new Set(list.filter((b) => WEAK_BRANDS.has(b))),
-    all: new Set(list),
+/** Popular site names from the weekly list (spec 010 §5.4); only the best-ranked ones get the typo rules. */
+const POPULAR_TYPO_TOP = 10_000;
+
+function buildIndex(extra: readonly string[]): BrandIndex {
+  const curated = [...new Set(BRANDS.map((b) => b.toLowerCase()))];
+  const popular = extra.map((b) => b.toLowerCase()).filter((b) => !WEAK_BRANDS.has(b));
+  const curatedStrong = curated.filter((b) => !WEAK_BRANDS.has(b));
+  const typoList = [...new Set([...curatedStrong, ...popular.slice(0, POPULAR_TYPO_TOP)])];
+  const typo = new Map<string, string[]>();
+  for (const b of typoList) {
+    if (b.length < 6) continue;
+    for (const key of new Set([b, ...deletions(b)])) typo.set(key, [...(typo.get(key) ?? []), b]);
+  }
+  return {
+    typo,
+    strictTypo: typoList.filter((b) => b.length >= 8),
+    strong: new Set([...curatedStrong, ...popular]),
+    weak: new Set(curated.filter((b) => WEAK_BRANDS.has(b))),
+    all: new Set([...curated, ...popular]),
+    curated: new Set(curated),
   };
-  if (extra.length === 0) index = built;
-  return built;
+}
+
+/** Every string made by deleting one letter: two words one edit apart share one of these (or each other). */
+function deletions(w: string): string[] {
+  return Array.from({ length: w.length }, (_, i) => w.slice(0, i) + w.slice(i + 1));
+}
+
+let index: BrandIndex | undefined;
+const extraIndexes = new WeakMap<readonly string[], BrandIndex>();
+let popularBrands: readonly string[] = [];
+
+function brandIndex(extra?: readonly string[]): BrandIndex {
+  if (extra && extra.length > 0) {
+    let built = extraIndexes.get(extra);
+    if (!built) extraIndexes.set(extra, (built = buildIndex([...popularBrands, ...extra])));
+    return built;
+  }
+  return (index ??= buildIndex(popularBrands));
+}
+
+/**
+ * Adds the weekly popular-site names (best rank first) to every later check in this process. The server calls it
+ * after loading `brand_labels`; without it only the curated seed applies (spec 014 §8 "brand list missing").
+ */
+export function setPopularBrands(labels: readonly string[]): void {
+  popularBrands = labels;
+  index = undefined;
+}
+
+/** Longest part of `v` (at least `minLen` letters) found in `set`, optionally skipping some words. */
+function containedIn(
+  v: string,
+  set: ReadonlySet<string>,
+  minLen: number,
+  skip?: ReadonlySet<string>,
+): string | undefined {
+  for (let len = v.length; len >= minLen; len--)
+    for (let i = 0; i + len <= v.length; i++) {
+      const part = v.slice(i, i + len);
+      if (set.has(part) && !skip?.has(part)) return part;
+    }
+  return undefined;
 }
 
 export interface BrandRiskOptions {
   strict?: boolean; // description asked to imitate a brand (safety_impersonation ≥ 0.70)
   descBrandTokens?: string[]; // brand words found in the description: banned outright
   segments?: string[]; // dictionary split of the label, if already known
-  extraBrands?: readonly string[]; // e.g. the weekly popular-site list
+  extraBrands?: readonly string[]; // more brand labels for this check only
 }
 
 export function brandRisk(
@@ -130,36 +179,37 @@ export function brandRisk(
   }
   const hasSecurityWord =
     segments.some((s) => SECURITY_TERMS.has(s)) || LONG_SECURITY_TERMS.some((s) => label.includes(s));
-  // Only brands within one letter of the same length can be one typo away.
-  const nearby = (s: string) =>
-    [s.length - 1, s.length, s.length + 1].flatMap((n) => idx.byLength.get(n) ?? []);
+  // Brands one typo away share the word itself or one of its one-letter deletions as a key.
+  const oneTypo = (s: string) => {
+    for (const key of [s, ...deletions(s)])
+      for (const b of idx.typo.get(key) ?? []) if (withinOneEdit(s, b)) return b;
+    return undefined;
+  };
 
   for (const v of variants(label)) {
-    if (idx.strong.includes(v) || (opts.strict && idx.weak.has(v)))
+    if (idx.strong.has(v) || (opts.strict && idx.weak.has(v)))
       return { risky: true, rule: 'exact', brand: v };
-    for (const b of nearby(v)) if (withinOneEdit(v, b)) return { risky: true, rule: 'typo', brand: b };
+    const typo = oneTypo(v);
+    if (typo) return { risky: true, rule: 'typo', brand: typo };
     for (const seg of segments) {
-      if (seg.length >= 5)
-        for (const b of nearby(seg))
-          if (withinOneEdit(seg, b)) return { risky: true, rule: 'typo', brand: b };
+      const near = seg.length >= 5 ? oneTypo(seg) : undefined;
+      if (near) return { risky: true, rule: 'typo', brand: near };
     }
-    for (const b of idx.strong) {
-      if (b.length >= 5 && v.includes(b)) return { risky: true, rule: 'contains', brand: b };
-      if (opts.strict) {
-        if (b.length >= 4 && v.includes(b)) return { risky: true, rule: 'contains_strict', brand: b };
-        if (b.length >= 8 && editDistance(v, b, 2) <= 2)
-          return { risky: true, rule: 'typo_strict', brand: b };
-      }
+    const contained = containedIn(v, idx.strong, 5);
+    if (contained) return { risky: true, rule: 'contains', brand: contained };
+    if (opts.strict) {
+      const short = containedIn(v, idx.strong, 4);
+      if (short) return { risky: true, rule: 'contains_strict', brand: short };
+      for (const b of idx.strictTypo)
+        if (editDistance(v, b, 2) <= 2) return { risky: true, rule: 'typo_strict', brand: b };
     }
     if (hasSecurityWord) {
-      for (const b of idx.all) {
-        if (b.length >= 4 && v.includes(b) && !SECURITY_TERMS.has(b))
-          return { risky: true, rule: 'combo', brand: b };
-      }
+      const combo = containedIn(v, idx.all, 4, SECURITY_TERMS);
+      if (combo) return { risky: true, rule: 'combo', brand: combo };
     }
     if (opts.strict) {
-      for (const b of idx.weak)
-        if (b.length >= 4 && v.includes(b)) return { risky: true, rule: 'contains_strict', brand: b };
+      const weak = containedIn(v, idx.weak, 4);
+      if (weak) return { risky: true, rule: 'contains_strict', brand: weak };
     }
   }
   return { risky: false };
@@ -173,7 +223,7 @@ export function brandTokensIn(description: string): string[] {
     ...new Set(
       words.filter(
         (w) =>
-          idx.all.has(w) &&
+          idx.curated.has(w) &&
           (!idx.weak.has(w) || /[A-Z]/.test(description.match(new RegExp(`\\b${w}\\b`, 'i'))?.[0] ?? '')),
       ),
     ),

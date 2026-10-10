@@ -1,0 +1,64 @@
+# Reusable runner for the scheduled jobs (spec 010 tech §1, §5.1, §9). Each daily/weekly/monthly workflow calls it with
+# a job name. Secrets live in the GitHub environment "jobs" (tasks/M5-freshness.md decision 1: only the main branch,
+# no reviewer). Logs are public: jobs print counts only.
+name: run-job
+
+on:
+  workflow_call:
+    inputs:
+      job:
+        required: true
+        type: string
+      force:
+        required: false
+        type: boolean
+        default: false
+      report:
+        description: Upload files the job writes to REPORT_DIR as an artifact
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: jobs
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run the job
+        env:
+          JOB: ${{ inputs.job }}
+          FORCE: ${{ inputs.force }}
+          REPORT_DIR: ${{ inputs.report && format('{0}/report', runner.temp) || '' }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OWNER_ALERT_EMAIL: ${{ secrets.OWNER_ALERT_EMAIL }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+          ALERT_CHANNEL: ${{ vars.ALERT_CHANNEL || 'email' }}
+          NRD_URL_TEMPLATE: ${{ vars.NRD_URL_TEMPLATE }}
+          NEXT_PUBLIC_SITE_NAME: ${{ vars.NEXT_PUBLIC_SITE_NAME }}
+          # Contact address in the user agent of downloads: the site, or else this repository.
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || format('{0}/{1}', github.server_url, github.repository) }}
+          GITHUB_TOKEN: ${{ github.token }} # higher GitHub API limits for the free-provider lists
+          LOG_LEVEL: warn
+        run: |
+          if [ -n "$REPORT_DIR" ]; then mkdir -p "$REPORT_DIR"; fi
+          if [ "$FORCE" = "true" ]; then pnpm job "$JOB" --force; else pnpm job "$JOB"; fi
+      - name: Keep the report
+        if: inputs.report && always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.job }}-report
+          path: ${{ runner.temp }}/report/
+          if-no-files-found: ignore
+          retention-days: 90

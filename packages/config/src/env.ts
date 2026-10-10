@@ -62,6 +62,8 @@ export const serverEnvSchema = publicEnvSchema
     BREVO_API_KEY: z.string().optional(),
 
     OWNER_ALERT_EMAIL: z.email().optional(),
+    // Chat-app webhook for owner alerts when ALERT_CHANNEL=chat (spec 015 FR-OBS-012).
+    ALERT_WEBHOOK_URL: z.url().optional(),
     OWNER_USER_ID: z.uuid().optional(),
     ADMIN_USER_IDS: csv.pipe(z.array(z.uuid())),
 
@@ -73,6 +75,11 @@ export const serverEnvSchema = publicEnvSchema
     PRICE_PROVIDERS: csv.pipe(z.array(z.string())).default(['porkbun-pricing']),
     PREMIUM_PROVIDERS: csv.pipe(z.array(z.string())),
     NRD_URL_TEMPLATE: z.string().optional(),
+    // `age` public key for the weekly encrypted backup (spec 012 §5.4); the private key stays offline.
+    BACKUP_AGE_PUBLIC_KEY: z
+      .string()
+      .regex(/^age1[0-9a-z]{50,}$/, 'must be an age public key (age1…)')
+      .optional(),
 
     SENTRY_DSN: z.url().optional(),
     SENTRY_AUTH_TOKEN: z.string().optional(),

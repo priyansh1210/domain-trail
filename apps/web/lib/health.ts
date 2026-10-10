@@ -20,6 +20,8 @@ export interface HealthData {
   fxAsOf: string;
   publicData: 'live' | 'fixture';
   priceRefresh: 'ok' | 'failed' | 'not_yet';
+  /** Where the prices in use came from: the daily job's database tables, Porkbun directly, or the snapshot. */
+  pricesSource?: 'database' | 'porkbun' | 'snapshot';
   /** Short reason when the last refresh failed (no secrets: only the public URL and status). */
   priceRefreshNote?: string;
   rdapDirectory: string;

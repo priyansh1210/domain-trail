@@ -1,0 +1,27 @@
+# Spec 010 tech §5.2 (FR-REF-001, 009): IANA extension list + RDAP directory daily; wildcard scan on Sundays.
+name: daily-tld-registry
+
+on:
+  schedule:
+    - cron: '30 0 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Redo work already done today
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: job-tld-registry
+  cancel-in-progress: false
+
+jobs:
+  run:
+    uses: ./.github/workflows/run-job.yml
+    with:
+      job: tld-registry
+      force: ${{ inputs.force || false }}
+    secrets: inherit
