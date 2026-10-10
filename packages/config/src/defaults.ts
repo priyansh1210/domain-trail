@@ -31,6 +31,8 @@ export const rateLimits = {
   moreOrRefineCost: 0.5,
   recheckPerMinute: 10,
   feedbackPerHour: 60,
+  /** Signed-out saving creates an anonymous session; a visitor needs one, not dozens (spec 011 §5.6). */
+  anonymousSessionsPerHour: 5,
   eventsPerHour: 120,
   snapshotPerMinute: 60,
   requestBodyMaxBytes: 16 * 1024,

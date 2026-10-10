@@ -80,6 +80,6 @@ jobs:
           BACKUP_AGE_PUBLIC_KEY: age1qyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqs3290gq
           LOG_LEVEL: warn
         run: |
-          for job in tld-registry refresh-prices nrd-ingest refresh-free-providers brand-list cleanup usage-report tune-weights; do
+          for job in tld-registry refresh-prices nrd-ingest refresh-free-providers brand-list watchlist cleanup usage-report tune-weights; do
             pnpm job "$job" --fixtures --force
           done

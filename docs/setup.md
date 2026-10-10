@@ -115,6 +115,23 @@ What runs when (UTC): extension registry 00:30 · prices 01:00 · newly register
 weight proposal on the 2nd. Runbooks for re-running jobs, restoring a backup and other chores are in
 `docs/runbooks/`.
 
+## Part D — Real sign-in and saving (milestone M5b)
+
+Until these steps are done, the live site says sign-in and saving are "not available yet".
+
+1. **OAuth apps** (free): Google Cloud console → APIs & Services → Credentials → *OAuth client ID* (Web) with the
+   redirect URI Supabase shows under Authentication → Providers → Google; GitHub → Settings → Developer settings →
+   *OAuth Apps* → callback URL from Supabase's GitHub provider page. Paste both client ids and secrets into Supabase.
+2. Supabase → Authentication → **Providers**: Google and GitHub on; **Anonymous sign-ins** on. Attack protection →
+   **CAPTCHA → Turnstile** with your Turnstile secret.
+3. Supabase → Authentication → **URL configuration**: Site URL `https://domain-trail.vercel.app`, redirect URL
+   `https://domain-trail.vercel.app/auth/callback`.
+4. Vercel → Environment Variables: make sure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `SEARCH_LINK_SECRET`, `VISITOR_SALT_SECRET`, the Upstash and Turnstile keys are set,
+   then `MOCK_EXTERNALS=0`. Leave `MOCK_SIGN_IN` unset.
+5. Sign in once on the site, copy your user id (Supabase → Authentication → Users) into Vercel as `OWNER_USER_ID`,
+   redeploy, and open `/ops` and `/ops/saved`.
+
 ## Moving to your own domain later
 Add the domain in Vercel → change `NEXT_PUBLIC_SITE_URL` → update the Supabase Site URL and redirect URL →
 redeploy. No code changes (spec 000 FR-SYS-011). Buying a domain is a paid item and needs a spec change first

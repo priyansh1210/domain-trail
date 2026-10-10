@@ -34,6 +34,9 @@ export const serverEnvSchema = publicEnvSchema
     // Free, keyless public data (DNS, RDAP, Porkbun prices, FX rates) is real even in mock mode so the public site
     // never shows a simulated "available" (P3); tests and CI use recorded fixtures (tasks/M4-verify.md decision 1).
     PUBLIC_DATA_MODE: z.enum(['live', 'fixture']).default('live'),
+    // Demo sign-in (two fixed accounts, saved items in memory) for tests and local development only. Never on the
+    // public site: with MOCK_EXTERNALS=1 and this off, sign-in and saving say they are not available yet.
+    MOCK_SIGN_IN: z.stringbool().default(false),
 
     SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
     SUPABASE_DB_URL: z.string().optional(),

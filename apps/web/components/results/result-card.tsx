@@ -6,6 +6,7 @@ import { type FxTable, formatMoney } from '@domains-all/pricing/client';
 import { useState } from 'react';
 import { ago } from '@/lib/client/results';
 import { recheck, sendFeedback } from '@/lib/client/search';
+import { WatchStar } from './save-controls';
 import { t } from '@/lib/i18n';
 import { reasonText } from '@/lib/reasons';
 
@@ -176,6 +177,7 @@ export function ResultCard({
           </button>
         )}
         <span className="ml-auto flex gap-1">
+          {!isFree && <WatchStar item={item} onNote={setNote} />}
           <button
             type="button"
             aria-pressed={vote === 1}

@@ -238,3 +238,9 @@ Metrics: detection source mix (jev/rules), unsure-chip rate, chip-edit rate by f
 ## 14. Risks and research links
 - R-13: TLD eligibility policies for country and restricted TLDs must be curated and verified.
 - Risk: industry list may miss niches → chip-edit metrics feed taxonomy updates (new catalog version).
+
+## Implementation notes (M5b, 2026-10-10)
+- Chip editing: `applyFeatureEdits` / `FeatureEditsSchema` (`packages/core/src/features/edit.ts`) accept only catalog
+  values (the same option lists the detector and the chips use) and mark edited fields `edited: true, source: 'user'`.
+  `POST /api/search/{ref}/refine` re-runs stages S2–S9 with the edited profile (no S1), as a new search with its own
+  link; it needs the description from the visitor's tab, like "Find more".

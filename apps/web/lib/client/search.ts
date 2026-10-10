@@ -45,6 +45,9 @@ export interface SearchView {
 export type StartError =
   | { kind: 'validation'; fields: Record<string, string> }
   | { kind: 'human' }
+  | { kind: 'auth' }
+  | { kind: 'no_changes' }
+  | { kind: 'no_description' }
   | { kind: 'limited'; retryAfterSec: number }
   | { kind: 'unavailable' }
   | { kind: 'generic' };
@@ -163,12 +166,14 @@ function applyEvent(
 }
 
 /**
- * Starts a search. Resolves with the search reference once the server has created it (the caller then navigates
- * to the results page); later events keep updating the store.
+ * Opens a results stream (a new search, or a refine with edited features). Resolves with the new search reference
+ * once the server has created it (the caller then navigates to the results page); later events keep updating the
+ * store.
  */
-export function startSearch(
+function openStream(
+  url: string,
+  payload: Record<string, unknown>,
   input: SearchInput,
-  turnstileToken: string,
 ): Promise<{ ref: string } | { error: StartError }> {
   const { set } = useSearchStore.getState();
   let ref: string | undefined;
@@ -182,20 +187,23 @@ export function startSearch(
       }
     };
 
-    fetchEventSource('/api/search', {
+    fetchEventSource(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...input, turnstileToken, clientRequestId: crypto.randomUUID() }),
+      body: JSON.stringify(payload),
       openWhenHidden: true,
       async onopen(res) {
         if (res.ok && res.headers.get('content-type')?.includes('text/event-stream')) return;
         const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
           fields?: Record<string, string>;
           retryAfterSec?: number;
           ref?: string;
         };
         if (res.status === 409 && body.ref) settle({ ref: body.ref });
+        else if (res.status === 400 && body.error === 'no_changes') settle({ error: { kind: 'no_changes' } });
         else if (res.status === 400) settle({ error: { kind: 'validation', fields: body.fields ?? {} } });
+        else if (res.status === 401) settle({ error: { kind: 'auth' } });
         else if (res.status === 403) settle({ error: { kind: 'human' } });
         else if (res.status === 429)
           settle({ error: { kind: 'limited', retryAfterSec: body.retryAfterSec ?? 600 } });
@@ -228,10 +236,34 @@ export function startSearch(
   });
 }
 
+/** Starts a search (spec 001 tech §1 step 8). */
+export function startSearch(
+  input: SearchInput,
+  turnstileToken: string,
+): Promise<{ ref: string } | { error: StartError }> {
+  return openStream('/api/search', { ...input, turnstileToken, clientRequestId: crypto.randomUUID() }, input);
+}
+
+/** Results again with edited feature chips (spec 003 FR-FEAT-011); signed-in users only. */
+export async function refineSearch(
+  ref: string,
+  featureEdits: Record<string, unknown>,
+  turnstileToken: string,
+): Promise<{ ref: string } | { error: StartError }> {
+  const input = recallInput(ref);
+  if (!input) return { error: { kind: 'no_description' } };
+  return openStream(
+    `/api/search/${encodeURIComponent(ref)}/refine`,
+    { description: input.description, featureEdits, turnstileToken },
+    input,
+  );
+}
+
 /** "Find more in this range" (FR-PRC-009): new names in the band, excluding everything already shown. */
 export async function findMore(
   ref: string,
   band: { minCents: number; maxCents: number | null; basis: 'upfront' | 'renewal' },
+  turnstileToken = 'none',
 ): Promise<'ok' | 'no_description' | 'limited' | 'error'> {
   const input = recallInput(ref);
   if (!input) return 'no_description';
@@ -244,7 +276,7 @@ export async function findMore(
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       ...input,
-      turnstileToken: 'none',
+      turnstileToken,
       priceMinCents: band.minCents,
       priceMaxCents: band.maxCents,
       basis: band.basis,

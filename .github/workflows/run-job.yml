@@ -45,6 +45,9 @@ jobs:
           OWNER_ALERT_EMAIL: ${{ secrets.OWNER_ALERT_EMAIL }}
           ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
           ALERT_CHANNEL: ${{ vars.ALERT_CHANNEL || 'email' }}
+          EMAIL_MODE: ${{ vars.EMAIL_MODE || 'off' }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          UNSUBSCRIBE_SECRET: ${{ secrets.UNSUBSCRIBE_SECRET }}
           NRD_URL_TEMPLATE: ${{ vars.NRD_URL_TEMPLATE }}
           NEXT_PUBLIC_SITE_NAME: ${{ vars.NEXT_PUBLIC_SITE_NAME }}
           # Contact address in the user agent of downloads: the site, or else this repository.

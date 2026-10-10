@@ -14,7 +14,9 @@ import { log } from '@domains-all/log';
 import { tldsInBand } from '@domains-all/pricing';
 import * as z from 'zod/mini';
 import type { Bucket } from './limits';
+import { limitKey } from './search';
 import type { Services } from './services';
+import type { SessionUser } from './session';
 import { eventStream, readLimited } from './sse';
 import { streamVerify } from './verify-stream';
 import { clientIp, visitorHash } from './visitor';
@@ -45,7 +47,12 @@ export function inBand(
   return cents >= min && (max === null || cents <= max);
 }
 
-export async function handleMore(req: Request, ref: string, svc: Services): Promise<Response> {
+export async function handleMore(
+  req: Request,
+  ref: string,
+  svc: Services,
+  user?: SessionUser | null,
+): Promise<Response> {
   const raw = await readLimited(req, rateLimits.requestBodyMaxBytes + 40 * rateLimits.excludeListMax);
   if (raw === null) return json(413, { error: 'too_large', message: 'Request is too large.' });
   let body: unknown;
@@ -76,9 +83,10 @@ export async function handleMore(req: Request, ref: string, svc: Services): Prom
   if (human === 'failed') return json(403, { error: 'human_check_failed', message: 'Please try again.' });
   if (svc.limitsEnforced) {
     const visitor = visitorHash(ip, req.headers.get('user-agent') ?? '', secrets.visitorSalt);
+    const { key, tier } = limitKey(user, visitor);
     const units = human === 'unavailable' ? 2 : 1; // half a search
     for (const bucket of ['search', 'search_day'] as Bucket[]) {
-      const r = await svc.limiter.check(bucket, visitor, 'anonymous', units);
+      const r = await svc.limiter.check(bucket, key, tier, units);
       if (!r.ok)
         return json(
           429,

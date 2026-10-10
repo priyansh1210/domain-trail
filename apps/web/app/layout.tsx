@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { siteIdentity } from '@domains-all/config';
+import { AccountLink } from '@/components/account-link';
 import { DataAge } from '@/components/data-age';
 import { t } from '@/lib/i18n';
 import './globals.css';
@@ -19,10 +20,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body className="flex min-h-dvh flex-col antialiased">
         <header className="border-b border-[var(--border)]">
-          <div className="mx-auto max-w-3xl px-4 py-3">
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
             <Link href="/" className="text-lg font-semibold">
               {site.name}
             </Link>
+            <nav aria-label="Account" className="text-sm">
+              <AccountLink />
+            </nav>
           </div>
         </header>
         <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">{children}</main>

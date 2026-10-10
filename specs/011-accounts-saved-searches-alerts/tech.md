@@ -280,3 +280,25 @@ Metrics: sign-ins/day by method, saved/watch counts, notifications created, e-ma
   at $0 without a domain, so user e-mail stays off.
 - R-09: Supabase anonymous sign-ins count toward the 50k MAU limit and need "manual identity linking" enabled for §5.7;
   CAPTCHA (Turnstile) must be on for anonymous sign-ins to prevent abuse.
+
+## 15. Implementation notes (M5b, 2026-10-10)
+- **Server-only sign-in.** `/auth/sign-in` asks Supabase for the provider URL (PKCE; `@supabase/ssr` keeps the
+  verifier and the session in httpOnly cookies), `/auth/callback` exchanges the code, `/auth/sign-out` takes
+  `scope=local|global`. The browser loads no sign-in library; pages call `/api/me/*`. Route handlers read and write
+  cookies through a small cookie jar, so they are tested without the framework.
+- **Moving signed-out saves (§5.7).** One path instead of two: before redirecting to the provider, the server keeps
+  the anonymous user id in a signed, 15-minute cookie; the callback moves that user's saved searches and names into
+  the account (duplicates and anything over the limits are skipped and counted) and deletes the anonymous user. No
+  "manual identity linking" setting is needed, and `POST /me/merge` was dropped from the contract.
+- **Anonymous sessions** come from `POST /api/me/anonymous`; the Turnstile token goes to Supabase, which checks it
+  (tokens are single use, so the server must not check it first). At most 5 per visitor per hour.
+- **Mock sign-in** (`MOCK_SIGN_IN=1`, tests and local development only): two fixed demo accounts and a memory store;
+  tests may sign in as a fresh account with the `da_mock_as` cookie. With mock mode on a public site and
+  `MOCK_SIGN_IN` off, sign-in and saving say they are not available, instead of sharing a demo account.
+- **Saved searches** extend the stored search's expiry by 400 days so the saved link keeps working; `searches.user_id`
+  is set for signed-in searchers (export and deletion with the account).
+- **Watchlist job** compares against the last known status/price (`watchlist.last_*`, and `search_results` for saved
+  searches, which it then updates); a name without a baseline gets one and no alert; one notification per user, name
+  and kind per day. Digest e-mail runs only with `EMAIL_MODE=on` (`packages/email`: digest text, HMAC unsubscribe
+  tokens, RFC 8058 headers, `/api/unsubscribe`).
+- **Owner pages** `/ops` and `/ops/saved` are server-rendered and answer 404 to everyone not in `ADMIN_USER_IDS`.

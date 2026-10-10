@@ -19,7 +19,8 @@ export type JobName =
   | 'cleanup'
   | 'backup'
   | 'usage-report'
-  | 'tune-weights';
+  | 'tune-weights'
+  | 'watchlist';
 
 export type JobStats = Record<string, number | string | boolean>;
 

@@ -6,8 +6,12 @@ import type { FxTable } from '@domains-all/pricing/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { HumanCheck, type HumanCheckHandle } from '@/components/human-check';
+import { ChipEditor } from '@/components/results/chip-editor';
 import { PriceFilter } from '@/components/results/price-filter';
+import { SaveSearchButton } from '@/components/results/save-controls';
 import { bandFor, Sections } from '@/components/results/sections';
+import { HumanTokenContext, loadSaved, signInHref, useAccount } from '@/lib/client/account';
 import {
   ago,
   DEFAULT_FILTERS,
@@ -138,6 +142,21 @@ export function ResultsView({ searchRef }: { searchRef: string }) {
   const view = useSearchStore((s) => s.byRef[searchRef]);
   const requested = useRef(false);
   const announce = useAnnouncer(view);
+  const human = useRef<HumanCheckHandle>(null);
+  const humanToken = useCallback(async () => (await human.current?.token()) ?? 'none', []);
+  const session = useAccount((s) => s.session);
+  const [editing, setEditing] = useState(false);
+  const canEdit = Boolean(session?.user && !session.user.isAnonymous);
+
+  // Saved names and searches of this browser (stars and the Save button show their state).
+  useEffect(() => {
+    void loadSaved();
+  }, []);
+
+  // Back from "Sign in to edit": open the editor (spec 011 FR-ACC-003, the started action continues).
+  useEffect(() => {
+    if (canEdit && new URLSearchParams(window.location.search).get('edit') === 'chips') setEditing(true);
+  }, [canEdit]);
 
   // Filters live in the page address so links and reloads keep them (FR-PRC-007).
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
@@ -218,7 +237,11 @@ export function ResultsView({ searchRef }: { searchRef: string }) {
 
   async function onFindMore(section: Section) {
     setFindMoreNote('');
-    const outcome = await findMore(searchRef, { ...bandFor(section, filters), basis: filters.basis });
+    const outcome = await findMore(
+      searchRef,
+      { ...bandFor(section, filters), basis: filters.basis },
+      await humanToken(),
+    );
     if (outcome === 'no_description') setFindMoreNote(t('results.findMoreUnavailable'));
     else if (outcome === 'limited') setFindMoreNote(t('results.findMoreLimited'));
     else if (outcome === 'error') setFindMoreNote(t('form.errorGeneric'));
@@ -232,123 +255,157 @@ export function ResultsView({ searchRef }: { searchRef: string }) {
   const notices = view?.notices ?? [];
   const showResults = Boolean(view?.profile) && view?.stage !== 'names' && view?.stage !== 'features';
 
+  const suggestedTitle = view?.profile
+    ? profileChips(view.profile)
+        .slice(0, 2)
+        .map((c) => c.label)
+        .join(' · ')
+    : t('results.saveSearch');
+
   return (
-    <div className="flex flex-col gap-6">
-      <p className="sr-only" aria-live="polite">
-        {announce}
-      </p>
+    <HumanTokenContext.Provider value={humanToken}>
+      <div className="flex flex-col gap-6">
+        <HumanCheck ref={human} />
+        <p className="sr-only" aria-live="polite">
+          {announce}
+        </p>
 
-      {(phase === 'expired' || phase === 'not_found') && (
-        <Banner tone="warn">
-          {t(phase === 'expired' ? 'results.expired' : 'results.notFound')}{' '}
-          <Link href="/" className="underline">
-            {t('results.startNew')}
-          </Link>
-        </Banner>
-      )}
-      {phase === 'refused' && <Banner tone="danger">{t('results.refused')}</Banner>}
-      {phase === 'error' && <Banner tone="danger">{t('form.errorGeneric')}</Banner>}
-      {view?.degraded && (
-        <Banner tone="warn">
-          {t(view.degraded === 'budget' ? 'results.degradedBudget' : 'results.degradedJev')}
-        </Banner>
-      )}
-      {view?.notSaved && <Banner tone="info">{t('results.notSaved')}</Banner>}
-      {notices.includes('avl_paused') && <Banner tone="warn">{t('results.avlPaused')}</Banner>}
-      {notices.includes('stale_prices') && <Banner tone="warn">{t('results.stalePrices')}</Banner>}
-      {notices.includes('partial') && <Banner tone="warn">{t('results.partial')}</Banner>}
-
-      {phase === 'needs_detail' && (
-        <section
-          aria-labelledby="detail-title"
-          className="flex flex-col gap-3 rounded-lg border border-[var(--warn)] p-4"
-        >
-          <h2 id="detail-title" className="text-lg font-semibold">
-            {t('results.needsDetailTitle')}
-          </h2>
-          <p>{t('results.needsDetailIntro')}</p>
-          <ul className="list-disc pl-6">
-            {(view?.hints ?? []).map((h) => (
-              <li key={h}>{t(`results.hint_${h}`)}</li>
-            ))}
-          </ul>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href={`/?edit=${encodeURIComponent(searchRef)}`}
-              className="rounded-lg bg-[var(--accent)] px-4 py-2 font-semibold text-[var(--on-accent)]"
-            >
-              {t('results.editDescription')}
+        {(phase === 'expired' || phase === 'not_found') && (
+          <Banner tone="warn">
+            {t(phase === 'expired' ? 'results.expired' : 'results.notFound')}{' '}
+            <Link href="/" className="underline">
+              {t('results.startNew')}
             </Link>
-            <button
-              type="button"
-              onClick={searchAnyway}
-              className="rounded-lg border border-[var(--border)] px-4 py-2"
-            >
-              {t('results.searchAnyway')}
-            </button>
-          </div>
-        </section>
-      )}
+          </Banner>
+        )}
+        {phase === 'refused' && <Banner tone="danger">{t('results.refused')}</Banner>}
+        {phase === 'error' && <Banner tone="danger">{t('form.errorGeneric')}</Banner>}
+        {view?.degraded && (
+          <Banner tone="warn">
+            {t(view.degraded === 'budget' ? 'results.degradedBudget' : 'results.degradedJev')}
+          </Banner>
+        )}
+        {view?.notSaved && <Banner tone="info">{t('results.notSaved')}</Banner>}
+        {notices.includes('avl_paused') && <Banner tone="warn">{t('results.avlPaused')}</Banner>}
+        {notices.includes('stale_prices') && <Banner tone="warn">{t('results.stalePrices')}</Banner>}
+        {notices.includes('partial') && <Banner tone="warn">{t('results.partial')}</Banner>}
 
-      {phase !== 'refused' && phase !== 'needs_detail' && phase !== 'expired' && phase !== 'not_found' && (
-        <>
-          <Stages view={view ?? { phase: 'starting' }} />
-          <section aria-labelledby="understood-title" className="flex flex-col gap-3">
-            <h2 id="understood-title" className="text-lg font-semibold">
-              {t('results.understood')}
+        {phase === 'needs_detail' && (
+          <section
+            aria-labelledby="detail-title"
+            className="flex flex-col gap-3 rounded-lg border border-[var(--warn)] p-4"
+          >
+            <h2 id="detail-title" className="text-lg font-semibold">
+              {t('results.needsDetailTitle')}
             </h2>
-            <Chips view={view ?? { phase: 'starting' }} />
-          </section>
-
-          {view?.profile && !showResults && (
-            <ul className="flex flex-col gap-2" aria-hidden="true">
-              {Array.from({ length: 4 }, (_, i) => (
-                <li key={i} className="h-28 animate-pulse rounded-lg bg-[var(--surface)]" />
+            <p>{t('results.needsDetailIntro')}</p>
+            <ul className="list-disc pl-6">
+              {(view?.hints ?? []).map((h) => (
+                <li key={h}>{t(`results.hint_${h}`)}</li>
               ))}
             </ul>
-          )}
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href={`/?edit=${encodeURIComponent(searchRef)}`}
+                className="rounded-lg bg-[var(--accent)] px-4 py-2 font-semibold text-[var(--on-accent)]"
+              >
+                {t('results.editDescription')}
+              </Link>
+              <button
+                type="button"
+                onClick={searchAnyway}
+                className="rounded-lg border border-[var(--border)] px-4 py-2"
+              >
+                {t('results.searchAnyway')}
+              </button>
+            </div>
+          </section>
+        )}
 
-          {showResults && view && (
-            <>
-              <PriceFilter
-                filters={filters}
-                onChange={setFilters}
-                currency={currency}
-                onCurrency={chooseCurrency}
-                fx={fx}
-                showPremium={false}
-              />
-              {notices.includes('low_supply') && (
-                <p className="text-sm text-[var(--muted)]">{t('results.lowSupply')}</p>
+        {phase !== 'refused' && phase !== 'needs_detail' && phase !== 'expired' && phase !== 'not_found' && (
+          <>
+            <Stages view={view ?? { phase: 'starting' }} />
+            <section aria-labelledby="understood-title" className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <h2 id="understood-title" className="text-lg font-semibold">
+                  {t('results.understood')}
+                </h2>
+                {view?.profile && phase === 'done' && (
+                  <SaveSearchButton searchRef={searchRef} suggestedTitle={suggestedTitle} />
+                )}
+              </div>
+              {editing && view?.profile ? (
+                <ChipEditor profile={view.profile} searchRef={searchRef} onCancel={() => setEditing(false)} />
+              ) : (
+                <>
+                  <Chips view={view ?? { phase: 'starting' }} />
+                  {view?.profile && session?.available && (
+                    <p className="text-sm">
+                      {canEdit ? (
+                        <button type="button" className="underline" onClick={() => setEditing(true)}>
+                          {t('results.editChips')}
+                        </button>
+                      ) : (
+                        <Link href={signInHref(`/s/${searchRef}?edit=chips`)} className="underline">
+                          {t('results.signInToEdit')}
+                        </Link>
+                      )}
+                    </p>
+                  )}
+                </>
               )}
-              <Sections
-                view={view}
-                searchRef={searchRef}
-                filters={filters}
-                currency={currency}
-                fx={fx}
-                tab={tab}
-                onTab={setTab}
-                onResetRange={() => setFilters({ ...filters, min: 0, max: Number.POSITIVE_INFINITY })}
-                onFindMore={onFindMore}
-                findMoreNote={findMoreNote}
-              />
-            </>
-          )}
+            </section>
 
-          <footer className="flex flex-col gap-1 border-t border-[var(--border)] pt-3 text-xs text-[var(--muted)]">
-            {view?.pricing && pricesAgo && (
-              <p>
-                {t('results.pricesUpdated', {
-                  ago: t(`results.ago.${pricesAgo.key}`, { n: pricesAgo.n }),
-                  source: view.pricing.source,
-                })}
-              </p>
+            {view?.profile && !showResults && (
+              <ul className="flex flex-col gap-2" aria-hidden="true">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <li key={i} className="h-28 animate-pulse rounded-lg bg-[var(--surface)]" />
+                ))}
+              </ul>
             )}
-            <p data-testid="disclaimer">{t('results.disclaimer')}</p>
-          </footer>
-        </>
-      )}
-    </div>
+
+            {showResults && view && (
+              <>
+                <PriceFilter
+                  filters={filters}
+                  onChange={setFilters}
+                  currency={currency}
+                  onCurrency={chooseCurrency}
+                  fx={fx}
+                  showPremium={false}
+                />
+                {notices.includes('low_supply') && (
+                  <p className="text-sm text-[var(--muted)]">{t('results.lowSupply')}</p>
+                )}
+                <Sections
+                  view={view}
+                  searchRef={searchRef}
+                  filters={filters}
+                  currency={currency}
+                  fx={fx}
+                  tab={tab}
+                  onTab={setTab}
+                  onResetRange={() => setFilters({ ...filters, min: 0, max: Number.POSITIVE_INFINITY })}
+                  onFindMore={onFindMore}
+                  findMoreNote={findMoreNote}
+                />
+              </>
+            )}
+
+            <footer className="flex flex-col gap-1 border-t border-[var(--border)] pt-3 text-xs text-[var(--muted)]">
+              {view?.pricing && pricesAgo && (
+                <p>
+                  {t('results.pricesUpdated', {
+                    ago: t(`results.ago.${pricesAgo.key}`, { n: pricesAgo.n }),
+                    source: view.pricing.source,
+                  })}
+                </p>
+              )}
+              <p data-testid="disclaimer">{t('results.disclaimer')}</p>
+            </footer>
+          </>
+        )}
+      </div>
+    </HumanTokenContext.Provider>
   );
 }

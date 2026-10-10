@@ -19,6 +19,13 @@ export default defineConfig({
     url: `http://localhost:${PORT}/api/health`,
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { MOCK_EXTERNALS: '1', RATE_LIMIT_MODE: 'off', PUBLIC_DATA_MODE: 'fixture' },
+    env: {
+      MOCK_EXTERNALS: '1',
+      RATE_LIMIT_MODE: 'off',
+      PUBLIC_DATA_MODE: 'fixture',
+      MOCK_SIGN_IN: '1',
+      // The demo Google account is the owner in tests (admin views); the GitHub one is not.
+      ADMIN_USER_IDS: '0190f5a8-0000-7000-8000-00000000a001',
+    },
   },
 });

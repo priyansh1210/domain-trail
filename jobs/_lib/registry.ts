@@ -8,6 +8,7 @@ import { refreshPrices } from '../refresh-prices';
 import { tldRegistry } from '../tld-registry';
 import { tuneWeights } from '../tune-weights';
 import { usageReport } from '../usage-report';
+import { watchlist } from '../watchlist';
 import type { JobDefinition, JobName } from './run';
 
 export const JOBS: Record<JobName, JobDefinition> = {
@@ -20,6 +21,7 @@ export const JOBS: Record<JobName, JobDefinition> = {
   backup,
   'usage-report': usageReport,
   'tune-weights': tuneWeights,
+  watchlist,
 };
 
 export const isJobName = (s: string): s is JobName => Object.hasOwn(JOBS, s);

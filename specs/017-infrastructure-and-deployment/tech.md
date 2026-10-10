@@ -67,6 +67,8 @@ N/A (infrastructure). Backups: spec 012 §5.4.
 | `NEXT_PUBLIC_CF_ANALYTICS_TOKEN` | public | analytics | 009 |
 | `POLICY_VERSION` | server | terms acceptance | 013 |
 | `MOCK_EXTERNALS` | local, CI | fixtures instead of live services | 016 |
+| `MOCK_SIGN_IN` | local, CI | demo sign-in with fixed accounts (tests only; never on a public site) | 011 |
+| `ALERT_WEBHOOK_URL` | Actions (optional) | owner alerts to a chat app when `ALERT_CHANNEL=chat` | 015 |
 | `RATE_LIMIT_MODE` | local, CI | `off` disables limits only when `MOCK_EXTERNALS=1` (end-to-end tests) | 014, 016 |
 | `BACKUP_AGE_PUBLIC_KEY` | repo (public key) | backup encryption | 012 |
 
