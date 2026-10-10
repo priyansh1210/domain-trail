@@ -32,6 +32,24 @@ const label = {
 };
 
 type Field = keyof typeof label;
+
+/** Display text for one option of an editable field (chip editor). */
+export function optionLabel(field: Field, key: string): string {
+  return label[field](key);
+}
+
+export const EDITABLE_FIELDS: readonly Field[] = [
+  'siteType',
+  'industry',
+  'audience',
+  'geo',
+  'language',
+  'nameStyle',
+];
+
+export function flagLabel(key: string): string {
+  return (messages.chips.flags as Record<string, string>)[key] ?? key;
+}
 const FIELDS: Field[] = ['siteType', 'industry', 'audience', 'geo', 'language', 'nameStyle'];
 const MAX_FLAG_CHIPS = 8;
 

@@ -25,7 +25,10 @@ import {
   type Idempotency,
   type Limiter,
 } from './limits';
+import { type AccountStore, MemoryAccountStore, SupabaseAccountStore } from './accounts';
 import { createBrandListSource } from './brand-list';
+import type { CookieJar } from './cookies';
+import { type Auth, mockAuth, supabaseAuth } from './session';
 import {
   type FeedbackStore,
   MemoryFeedbackStore,
@@ -73,7 +76,25 @@ export interface Services {
   verifyHuman(token: string, ip: string | undefined): Promise<HumanCheck>;
   /** Throws NotConfiguredError in live mode when a secret is missing. */
   secrets(): { searchLink: string; visitorSalt: string };
+  /** The session of one request: Supabase Auth live, signed demo sessions in mock mode (spec 011 §5.1). */
+  auth(jar: CookieJar): Auth;
+  /** Saved items of that request's user (row-level security live; memory in mock mode). */
+  accounts(auth: Auth): AccountStore;
+  /** May this user open the owner pages (`/ops`, `/ops/saved`)? */
+  isAdmin(userId: string): boolean;
 }
+
+/** Sign-in is off: live mode without a database, or mock mode without MOCK_SIGN_IN (the pages say so). */
+const NO_AUTH: Auth = {
+  kind: 'supabase',
+  available: false,
+  user: async () => null,
+  client: () => null,
+  signInUrl: async () => null,
+  exchange: async () => null,
+  anonymous: async () => null,
+  signOut: async () => undefined,
+};
 
 export function buildServices(env: ServerEnv): Services {
   const live = !env.MOCK_EXTERNALS;
@@ -102,6 +123,13 @@ export function buildServices(env: ServerEnv): Services {
       : undefined;
   const prices = createPriceSource({ live: publicLive, fetchFn, ...(database ? { database } : {}) });
   const brands = createBrandListSource(sb);
+  const memoryAccounts = new MemoryAccountStore();
+  const pickSecret = (name: 'SEARCH_LINK_SECRET' | 'VISITOR_SALT_SECRET') => {
+    const v = env[name];
+    if (v) return v;
+    if (env.MOCK_EXTERNALS) return DEV_SECRET;
+    throw new NotConfiguredError(name);
+  };
 
   return {
     env,
@@ -142,14 +170,19 @@ export function buildServices(env: ServerEnv): Services {
       return verifyTurnstile(token, ip, env.TURNSTILE_SECRET_KEY);
     },
     secrets() {
-      const pick = (name: 'SEARCH_LINK_SECRET' | 'VISITOR_SALT_SECRET') => {
-        const v = env[name];
-        if (v) return v;
-        if (env.MOCK_EXTERNALS) return DEV_SECRET;
-        throw new NotConfiguredError(name);
-      };
-      return { searchLink: pick('SEARCH_LINK_SECRET'), visitorSalt: pick('VISITOR_SALT_SECRET') };
+      return { searchLink: pickSecret('SEARCH_LINK_SECRET'), visitorSalt: pickSecret('VISITOR_SALT_SECRET') };
     },
+    auth(jar) {
+      if (!live) return env.MOCK_SIGN_IN ? mockAuth(jar, `session:${DEV_SECRET}`) : NO_AUTH;
+      return env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        ? supabaseAuth(jar, env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+        : NO_AUTH;
+    },
+    accounts(auth) {
+      const userDb = auth.client();
+      return sb && userDb ? new SupabaseAccountStore(userDb, sb) : memoryAccounts;
+    },
+    isAdmin: (userId) => env.ADMIN_USER_IDS.includes(userId),
   };
 }
 

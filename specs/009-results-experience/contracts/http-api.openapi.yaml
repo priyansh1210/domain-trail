@@ -92,6 +92,7 @@ paths:
             text/event-stream:
               schema: { $ref: '#/components/schemas/StreamEvent' }
         '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '429': { $ref: '#/components/responses/RateLimited' }
   /domains/{fqdn}/recheck:
     post:
@@ -203,6 +204,27 @@ paths:
         '200': { description: Accepted }
         '401': { description: Invalid signature }
   /me:
+    post:
+      tags: [account]
+      summary: First sign-in — accept the Terms and Privacy Policy and confirm 18+ (FR-ACC-015)
+      security: [ { session: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [acceptTerms, ageConfirmed]
+              properties:
+                acceptTerms: { type: boolean, enum: [true] }
+                ageConfirmed: { type: boolean, enum: [true] }
+      responses:
+        '201':
+          description: Profile created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
     get:
       tags: [account]
       security: [ { session: [] } ]
@@ -247,32 +269,76 @@ paths:
             application/json:
               schema: { type: object }
         '401': { $ref: '#/components/responses/Unauthorized' }
-  /me/merge:
+  /me/session:
+    get:
+      tags: [account]
+      summary: Session summary for the header and results page (always 200; no personal data beyond the visitor's own)
+      responses:
+        '200':
+          description: Session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available: { type: boolean, description: 'false while sign-in and saving are switched off' }
+                  user:
+                    nullable: true
+                    type: object
+                    properties:
+                      isAnonymous: { type: boolean }
+                      email: { type: string, nullable: true }
+                      provider: { type: string, nullable: true }
+                  needsTerms: { type: boolean, description: First sign-in; the terms page comes next }
+                  isAdmin: { type: boolean }
+  /me/anonymous:
     post:
       tags: [account]
-      summary: Move a signed-out visitor's saved items into the signed-in account, then delete the anonymous user (spec 011 §5.7)
-      security: [ { session: [] } ]
+      summary: Anonymous session on a signed-out visitor's first save (spec 011 §5.6); the sign-in service checks the Turnstile token
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [anonToken]
+              required: [turnstileToken]
               properties:
-                anonToken: { type: string, description: Access token of the anonymous session being merged }
+                turnstileToken: { type: string }
+      responses:
+        '201': { description: Anonymous session created (httpOnly cookie) }
+        '200': { description: A session already exists }
+        '403': { $ref: '#/components/responses/HumanCheckFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { description: Saving is switched off }
+  /me/notifications:
+    get:
+      tags: [account]
+      summary: In-app alerts of the last 30 days (FR-ACC-008); signed-in users
+      security: [ { session: [] } ]
       responses:
         '200':
-          description: Merge result
+          description: Notifications, newest first
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  movedSearches: { type: integer }
-                  movedNames: { type: integer }
-                  skipped: { type: integer, description: Duplicates or items over the limits }
-        '400': { $ref: '#/components/responses/ValidationError' }
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: integer }
+                    kind: { type: string, enum: [registered, available, dropping_soon, price_change] }
+                    fqdn: { type: string }
+                    payload: { type: object, nullable: true }
+                    createdAt: { type: string, format: date-time }
+                    readAt: { type: string, format: date-time, nullable: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /me/notifications/read:
+    post:
+      tags: [account]
+      summary: Mark every notification as read
+      security: [ { session: [] } ]
+      responses:
+        '204': { description: Done }
         '401': { $ref: '#/components/responses/Unauthorized' }
   /me/saved-searches:
     get:
@@ -341,6 +407,8 @@ paths:
               properties:
                 fqdn: { type: string }
                 notifyOn: { type: array, items: { type: string, enum: [status_change, price_change] }, default: [status_change] }
+                lastStatus: { type: string, enum: [available, likely_available, available_premium, taken, dropping_soon, unknown], description: Status shown when starring (baseline for alerts) }
+                lastUpfrontUsdCents: { type: integer, description: Upfront price shown when starring }
       responses:
         '201':
           description: Added
@@ -684,15 +752,17 @@ components:
         email: { type: string, format: email }
         displayName: { type: string }
         alertsEnabled: { type: boolean }
-        alertFrequency: { type: string, enum: [daily, weekly] }
+        alertFrequency: { type: string, enum: [daily, weekly, off] }
         currency: { type: string }
+        termsVersion: { type: string }
+        provider: { type: string }
         createdAt: { type: string, format: date-time }
     ProfileUpdate:
       type: object
       properties:
         displayName: { type: string, maxLength: 60 }
         alertsEnabled: { type: boolean }
-        alertFrequency: { type: string, enum: [daily, weekly] }
+        alertFrequency: { type: string, enum: [daily, weekly, off] }
         currency: { type: string }
     SavedSearch:
       type: object

@@ -13,6 +13,7 @@
     "@domains-all/availability": "workspace:*",
     "@domains-all/config": "workspace:*",
     "@domains-all/core": "workspace:*",
+    "@domains-all/email": "workspace:*",
     "@domains-all/free-domains": "workspace:*",
     "@domains-all/log": "workspace:*",
     "@domains-all/metrics": "workspace:*",

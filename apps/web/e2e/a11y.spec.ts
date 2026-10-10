@@ -11,7 +11,7 @@ async function noSeriousViolations(page: Page) {
   expect(serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([]);
 }
 
-for (const path of ['/', '/privacy', '/terms', '/status']) {
+for (const path of ['/', '/privacy', '/terms', '/status', '/sign-in', '/account']) {
   test(`${path} has no serious accessibility problems`, async ({ page }) => {
     await page.goto(path);
     await noSeriousViolations(page);

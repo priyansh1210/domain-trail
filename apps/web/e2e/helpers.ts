@@ -1,5 +1,6 @@
 // Shared steps for the end-to-end tests (mock mode, recorded DNS/RDAP answers).
-import { expect, type Page } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
+import { type BrowserContext, expect, type Page } from '@playwright/test';
 
 export const BAKERY = 'Online bakery in Pune delivering sourdough bread and cakes to families';
 export const DEV_PORTFOLIO =
@@ -18,4 +19,23 @@ export async function search(page: Page, description = BAKERY) {
 export async function openSection(page: Page, name: RegExp) {
   const tab = page.getByRole('tab', { name }).first();
   if (await tab.isVisible()) await tab.click();
+}
+
+/** The mock sign-in provider signs this browser in as a fresh account (no state shared between tests). */
+export async function asNewUser(context: BrowserContext, baseURL: string | undefined) {
+  await context.addCookies([
+    { name: 'da_mock_as', value: randomUUID(), url: baseURL ?? 'http://localhost:3100' },
+  ]);
+}
+
+/** Signs in from the sign-in page; accepts the terms the first time. */
+export async function signIn(page: Page, provider: 'Google' | 'GitHub', next = '/account') {
+  await page.goto(`/sign-in?next=${encodeURIComponent(next)}`);
+  await page.getByRole('link', { name: `Continue with ${provider}` }).click();
+  await page.waitForURL((u) => !u.pathname.startsWith('/auth/') && u.pathname !== '/sign-in');
+  if (new URL(page.url()).pathname === '/account/welcome') {
+    await page.getByLabel(/I accept the Terms/).check();
+    await page.getByLabel('I am 18 or older.').check();
+    await page.getByRole('button', { name: 'Create my account' }).click();
+  }
 }

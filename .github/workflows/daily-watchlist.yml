@@ -1,0 +1,28 @@
+# Spec 011 tech §5.2, spec 010 §5.5 (FR-ACC-006, 007, FR-REF-008): re-checks watched names and the top results of
+# saved searches with alerts on; changes become in-app alerts (e-mail digests only with EMAIL_MODE=on).
+name: daily-watchlist
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Redo work already done today
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: job-watchlist
+  cancel-in-progress: false
+
+jobs:
+  run:
+    uses: ./.github/workflows/run-job.yml
+    with:
+      job: watchlist
+      force: ${{ inputs.force || false }}
+    secrets: inherit

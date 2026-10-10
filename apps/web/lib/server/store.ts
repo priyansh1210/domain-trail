@@ -10,6 +10,8 @@ export type SearchStatus = 'running' | 'done' | 'refused' | 'needs_detail' | 'er
 export interface SearchRecord {
   id: string;
   status: SearchStatus;
+  /** The visitor's preferences (no personal data); kept with a saved search. */
+  prefs: unknown;
   features: SiteProfile | null;
   degraded: boolean;
   createdAt: string;
@@ -24,7 +26,11 @@ export interface SearchStore {
     prefs: unknown;
     pipelineVersion: string;
     expiresAt: string;
+    /** Signed-in (not anonymous) searcher, for export and deletion with the account (spec 011 §5.4). */
+    userId?: string;
   }): Promise<void>;
+  /** Keeps a saved search's snapshot viewable until `until` (tasks/M5b-accounts.md decision 5). */
+  keep(id: string, until: string): Promise<void>;
   completeSearch(
     id: string,
     r: {
@@ -51,7 +57,7 @@ export interface StoredResults {
 
 export class MemorySearchStore implements SearchStore {
   readonly kind = 'memory' as const;
-  readonly searches = new Map<string, SearchRecord & { cacheKey: string; prefs: unknown }>();
+  readonly searches = new Map<string, SearchRecord & { cacheKey: string; userId?: string }>();
   readonly cache = new Map<string, { searchId: string; expiresAt: string }>();
   readonly results = new Map<string, StoredResults>();
 
@@ -69,12 +75,14 @@ export class MemorySearchStore implements SearchStore {
     prefs: unknown;
     pipelineVersion: string;
     expiresAt: string;
+    userId?: string;
   }) {
     if (this.searches.size > 5000) this.searches.clear(); // dev/preview only; bounded memory
     this.searches.set(s.id, {
       id: s.id,
       cacheKey: s.cacheKey,
       prefs: s.prefs,
+      ...(s.userId ? { userId: s.userId } : {}),
       status: 'running',
       features: null,
       degraded: false,
@@ -94,8 +102,13 @@ export class MemorySearchStore implements SearchStore {
   async getSearch(id: string, now = new Date()) {
     const s = this.searches.get(id);
     if (!s || new Date(s.expiresAt) <= now) return null;
-    const { cacheKey: _k, prefs: _p, ...record } = s;
+    const { cacheKey: _k, userId: _u, ...record } = s;
     return record;
+  }
+
+  async keep(id: string, until: string) {
+    const s = this.searches.get(id);
+    if (s && s.expiresAt < until) s.expiresAt = until;
   }
 
   async cacheLookup(cacheKey: string, now = new Date()) {
@@ -127,6 +140,7 @@ export class SupabaseSearchStore implements SearchStore {
     prefs: unknown;
     pipelineVersion: string;
     expiresAt: string;
+    userId?: string;
   }) {
     check(
       await this.sb.from('searches').insert({
@@ -136,8 +150,13 @@ export class SupabaseSearchStore implements SearchStore {
         prefs: s.prefs,
         pipeline_version: s.pipelineVersion,
         expires_at: s.expiresAt,
+        ...(s.userId ? { user_id: s.userId } : {}),
       }),
     );
+  }
+
+  async keep(id: string, until: string) {
+    check(await this.sb.from('searches').update({ expires_at: until }).eq('id', id).lt('expires_at', until));
   }
 
   async completeSearch(
@@ -170,13 +189,14 @@ export class SupabaseSearchStore implements SearchStore {
     const row = check(
       await this.sb
         .from('searches')
-        .select('id,status,features,degraded,created_at,expires_at')
+        .select('id,status,prefs,features,degraded,created_at,expires_at')
         .eq('id', id)
         .gt('expires_at', now.toISOString())
         .maybeSingle(),
     ) as {
       id: string;
       status: SearchStatus;
+      prefs: unknown;
       features: SiteProfile | null;
       degraded: boolean;
       created_at: string;
@@ -186,6 +206,7 @@ export class SupabaseSearchStore implements SearchStore {
       ? {
           id: row.id,
           status: row.status,
+          prefs: row.prefs,
           features: row.features,
           degraded: row.degraded,
           createdAt: row.created_at,

@@ -14,6 +14,7 @@ const ORDER: JobName[] = [
   'nrd-ingest',
   'refresh-free-providers',
   'brand-list',
+  'watchlist',
   'cleanup',
   'backup',
   'usage-report',
