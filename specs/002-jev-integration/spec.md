@@ -9,7 +9,7 @@
 | Used by | 003 (feature detection), 004 (keyword weighting), 008 (ranking), 014 (safety gate), 015 (cost guard) |
 | Tech file | [tech.md](./tech.md) |
 | Question catalog | [questions/catalog.md](./questions/catalog.md) |
-| Last updated | 2026-10-03 |
+| Last updated | 2026-10-11 |
 
 ## 1. Why (problem and value)
 The owner chose **Jev** (TypeSafe AI's decision model) as the intelligence of this product. Jev does not write
@@ -56,6 +56,15 @@ As the owner, I want Jev usage to stay inside the free monthly credit.
 As the owner, I want to read every question we ask Jev in one place.
 - **Given** the catalog file **When** I open it **Then** I see each question's id, version, type, wording and options.
 
+### US-5 AI answers for account holders who choose them
+As the owner, I want the decision model used only for people with an account who switch on AI answers, so its
+use (and its cost once credits are bought) stays tied to real accounts, and a visitor's description is sent to the
+model only when they choose it.
+- **Given** I am not signed in, or only have a guest session for saved items, **When** I search **Then** the
+  decision model is not asked, the results come from the built-in rules, and no reduced-quality banner is shown.
+- **Given** I am signed in and switched on AI answers **When** I search **Then** the decision model is asked; if it
+  does not answer, I get the rules-based results with the reduced-quality banner of US-1.
+
 ## 4. Functional requirements
 
 | ID | Requirement | Priority |
@@ -77,6 +86,10 @@ As the owner, I want to read every question we ask Jev in one place.
 | FR-JEV-015 | A quality evaluation on a fixed set of example descriptions MUST run at least weekly and before any model version change, producing a comparison report saved as a file in the code repository. | MUST |
 | FR-JEV-016 | A fallback MUST exist for every question group (feature detection, keyword weighting, ranking, TLD fit, safety). | MUST |
 | FR-JEV-017 | The system SHOULD cache decisions for identical inputs within a search session (e.g. re-ranking after the user edits a chip reuses unchanged answers). | SHOULD |
+| FR-JEV-018 | The decision model MUST be asked only for searches by signed-in account holders (guest sessions do not count) who switched on AI answers. Every other search MUST use the fallback rules and send nothing to the model. | MUST |
+| FR-JEV-019 | Whether AI answers apply MUST be decided on the server from the visitor's session; a request for AI answers from a visitor who is not signed in MUST be treated as AI answers off. Follow-up requests on the results page (more names, edited features) MUST follow the same rule. | MUST |
+| FR-JEV-020 | Stored results MUST be reused only for a search with the same AI-answers setting, so a search without AI answers never shows results made with the model (and the other way round). | MUST |
+| FR-JEV-021 | The reduced-quality banner and the degraded-mode count MUST apply only to searches with AI answers on; a search with AI answers off is not degraded and records no model usage. | MUST |
 
 ## 5. Non-functional requirements
 
@@ -106,6 +119,8 @@ As the owner, I want to read every question we ask Jev in one place.
 | Budget exhausted mid-month | Degraded mode for all searches until the month resets; status page explains. |
 | New model version behaves differently | No effect in production until approved via evaluation (US-2). |
 | Description in a non-English language | Sent as-is; Jev evaluates it; evaluation set includes non-English examples. |
+| A visitor signs out after a search with AI answers, then asks for more names | The new names come from the fallback rules (FR-JEV-019). |
+| Someone opens a shared link to results made with AI answers | They see those results as stored; a new search they start follows their own sign-in and switch. |
 
 ## 8. Out of scope
 - Generating names or any text with Jev (Jev cannot do this).
@@ -124,3 +139,12 @@ The reviewer questions of the draft were answered by the owner; the answers are 
 |---|---|
 | 1. Budget exhausted mid-month: degraded mode or pause searches? | Degraded mode (US-3, FR-JEV-009). |
 | 2. Evaluation report by e-mail or as a repository file? | A file in the repository is enough for now (FR-JEV-015). |
+
+## 11. Owner decisions (2026-10-11): AI answers switch
+
+| Question | Decision |
+|---|---|
+| 1. Who may use the decision model? | Only signed-in account holders, and only when they switch on AI answers (US-5, FR-JEV-018). |
+| 2. Show the switch while the model is not reachable (no credits bought yet)? | Yes. When the switch is on and the model does not answer, the existing reduced-quality banner explains it (US-1, FR-JEV-021). The owner plans to buy credits later. |
+| 3. What do signed-out visitors see? | A locked switch with a link to sign in (spec 001 FR-INT-015). |
+| 4. Default for signed-in users? | Off until they switch it on; the choice is remembered on that browser (spec 001 FR-INT-015). |

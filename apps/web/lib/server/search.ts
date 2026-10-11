@@ -12,6 +12,7 @@ import {
 } from '@domains-all/core';
 import { PIPELINE_VERSION, rateLimits, retention } from '@domains-all/config';
 import { log } from '@domains-all/log';
+import { aiAllowed, decisionsFor } from './ai';
 import type { Bucket } from './limits';
 import { NotConfiguredError, type Services } from './services';
 import type { SessionUser } from './session';
@@ -52,6 +53,8 @@ export async function resultsStage(
     profile: SiteProfile;
     strictBrand: boolean;
     seed: string;
+    /** AI answers allowed for this search (FR-JEV-018); off means rules only and never degraded (FR-JEV-021). */
+    ai: boolean;
     degraded?: string;
   },
 ): Promise<{
@@ -75,13 +78,13 @@ export async function resultsStage(
       strictBrand: a.strictBrand,
       searchId: a.id,
       seed: a.seed,
-      jev: svc.jev,
+      jev: decisionsFor(svc, a.ai),
       live: !svc.env.MOCK_EXTERNALS,
       wordCache: svc.wordCache,
     });
     usage.tokens += names.usage.tokens;
     usage.requests += names.usage.requests;
-    if (names.degraded && !degraded) {
+    if (a.ai && names.degraded && !degraded) {
       degraded = names.degraded;
       sink.send('degraded', { reason: degraded });
     }
@@ -184,7 +187,10 @@ export async function handleSearch(
   const duplicate = await svc.idempotency.claim(parsed.data.clientRequestId, ref);
   if (duplicate) return json(409, { error: 'duplicate_request', ref: duplicate });
 
-  const { description, preferences } = parsed.data;
+  // The server decides whether AI answers apply (FR-JEV-019); the allowed value is part of the cache key (FR-JEV-020).
+  const ai = aiAllowed(user, parsed.data.preferences.aiAnswers);
+  const description = parsed.data.description;
+  const preferences = { ...parsed.data.preferences, aiAnswers: ai };
   const key = cacheKey(description, preferences);
 
   // FR-INT-008: identical search within 24 h → stored result.
@@ -224,7 +230,7 @@ export async function handleSearch(
     sink.send('progress', { stage: 'features', pct: 5 });
     let outcome: Awaited<ReturnType<typeof runS1>>;
     try {
-      outcome = await runS1({ description, preferences, searchId: id, jev: svc.jev });
+      outcome = await runS1({ description, preferences, searchId: id, jev: decisionsFor(svc, ai) });
     } catch (e) {
       log.error({ event: 'search.error', searchId: id, error: (e as Error).message });
       sink.send('error', { error: 'internal', message: 'Something went wrong. Please try again.' });
@@ -242,7 +248,7 @@ export async function handleSearch(
     }
 
     const s1Ms = Date.now() - started;
-    let degraded = 'degraded' in outcome && outcome.degraded ? outcome.degraded : undefined;
+    let degraded = ai && 'degraded' in outcome && outcome.degraded ? outcome.degraded : undefined;
     if (degraded) sink.send('degraded', { reason: degraded });
     const usage = { ...outcome.usage };
 
@@ -263,6 +269,7 @@ export async function handleSearch(
         profile: outcome.profile,
         strictBrand: outcome.strictBrand,
         seed: key,
+        ai,
         ...(degraded ? { degraded } : {}),
       });
       stored = r.stored;
@@ -273,15 +280,17 @@ export async function handleSearch(
     }
 
     const durationMs = Date.now() - started;
-    await svc.jev
-      .recordSearch({ tokens: usage.tokens, requests: usage.requests, degraded: Boolean(degraded) })
-      .catch((e) => log.warn({ event: 'jev.usage_not_recorded', error: (e as Error).message }));
+    if (ai)
+      await svc.jev
+        .recordSearch({ tokens: usage.tokens, requests: usage.requests, degraded: Boolean(degraded) })
+        .catch((e) => log.warn({ event: 'jev.usage_not_recorded', error: (e as Error).message }));
 
     log.info({
       event: 'search',
       outcome: status,
       searchId: id,
       durationMs,
+      ai,
       degraded: Boolean(degraded),
       tokens: usage.tokens,
       results: stored.results.length,

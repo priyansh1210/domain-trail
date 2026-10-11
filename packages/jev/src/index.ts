@@ -9,7 +9,7 @@ import { createDecisionService, type DecisionService } from './service';
 import { createHttpTransport, type Transport } from './transport';
 
 export * from './catalog';
-export { AnswerMemo, type DecisionService } from './service';
+export { AnswerMemo, rulesOnly, type DecisionService } from './service';
 export { BudgetGuard, MemoryUsageStore, type UsageStore } from './budget';
 export { CircuitBreaker } from './breaker';
 export { buildState, type S1Input, type S5Input } from './state';

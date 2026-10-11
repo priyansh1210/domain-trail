@@ -112,6 +112,16 @@ Idempotency: `clientRequestId` is stored in Upstash for 60 s (`SET NX`) → a du
 Cache-hit path: the stored `search_results` are returned; any result whose `domain_checks.expires_at < now()` is
 re-checked in the stream (spec 005), so reused results are never stale.
 
+AI answers switch (FR-INT-015; behaviour in spec 002 tech §5.10):
+- `PreferencesSchema.aiAnswers` (boolean, default `false`) travels with the other preferences, so it is part of the
+  cache key and of the stored search.
+- The form reads the session from the account store that the header loads (`useAccount`). Signed in means a user
+  that is not anonymous; until the session is known the switch shows as locked.
+- The choice is kept in `localStorage['ai-answers']`; the request sends `aiAnswers: signedIn && on`. The server
+  decides again from the session, so the browser's value is only a request.
+- The lock's link stores the description in `sessionStorage['draft-description']` and opens `/sign-in?next=/`; the
+  form restores the text once when it loads.
+
 ## 6. External services and free-tier limits
 
 | Service | Used for | Free-tier limit | Source | Verified |
@@ -181,6 +191,7 @@ Metrics: submits/min, validation-failure rate by field, Turnstile failures, cach
 | FR-INT-012 | `sessionStorage`, no DB column | `search-route.int.test.ts` (asserts no description persisted) |
 | FR-INT-013 | UUIDv7 + HMAC suffix | `search-link.test.ts` |
 | FR-INT-014 | accessible form components | axe in `intake.spec.ts` |
+| FR-INT-015 | `<SearchForm>` AI switch, `PreferencesSchema.aiAnswers` | `ai-answers.spec.ts`, `schema.test.ts` |
 | NFR-INT-001 | route budget §10 | `search-route.perf.test.ts` |
 | NFR-INT-002 | cache-hit path | `search-route.perf.test.ts` |
 | NFR-INT-003 | Turnstile managed mode | prod metric (spec 015) |
