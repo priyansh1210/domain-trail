@@ -77,13 +77,26 @@ export function PriceFilter({
   return (
     <section
       aria-labelledby="filter-title"
-      className="flex flex-col gap-3 rounded-lg border border-[var(--border)] p-3"
+      className="card flex flex-col gap-4 p-4 sm:p-5"
       data-testid="price-filter"
     >
-      <h2 id="filter-title" className="text-base font-semibold">
-        {t('results.filterTitle')}
-      </h2>
-      <div className="range-dual">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="filter-title" className="text-base">
+          {t('results.filterTitle')}
+        </h2>
+        <span className="wordmark text-[0.95rem] tabular-nums" aria-hidden="true">
+          {valueText(filters.min)} – {filters.max === INF ? `${usd(10_000)}+` : valueText(filters.max)}
+        </span>
+      </div>
+      <div
+        className="range-dual"
+        style={
+          {
+            '--lo': `${(usdToPosition(filters.min) / SLIDER_STEPS) * 100}%`,
+            '--hi': `${(usdToPosition(filters.max) / SLIDER_STEPS) * 100}%`,
+          } as React.CSSProperties
+        }
+      >
         <input
           type="range"
           min={0}
@@ -110,7 +123,7 @@ export function PriceFilter({
         />
       </div>
       <div className="flex flex-wrap items-end gap-3 text-sm">
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1 font-medium">
           {t('results.minPrice')} ({currency})
           <input
             inputMode="decimal"
@@ -118,10 +131,10 @@ export function PriceFilter({
             onChange={(e) => setMinText(e.target.value)}
             onBlur={commitTyped}
             onKeyDown={(e) => e.key === 'Enter' && commitTyped()}
-            className="w-28 rounded border border-[var(--border)] bg-transparent px-2 py-1"
+            className="field w-32 py-1.5 font-normal"
           />
         </label>
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1 font-medium">
           {t('results.maxPrice')} ({currency})
           <input
             inputMode="decimal"
@@ -130,12 +143,9 @@ export function PriceFilter({
             onChange={(e) => setMaxText(e.target.value)}
             onBlur={commitTyped}
             onKeyDown={(e) => e.key === 'Enter' && commitTyped()}
-            className="w-28 rounded border border-[var(--border)] bg-transparent px-2 py-1"
+            className="field w-32 py-1.5 font-normal"
           />
         </label>
-        <span className="text-[var(--muted)]" aria-hidden="true">
-          {valueText(filters.min)} – {filters.max === INF ? `${usd(10_000)}+` : valueText(filters.max)}
-        </span>
       </div>
 
       <div role="group" aria-label={t('results.presets')} className="flex flex-wrap gap-2 text-sm">
@@ -147,7 +157,7 @@ export function PriceFilter({
               type="button"
               aria-pressed={active}
               onClick={() => set({ min: p.min, max: p.max })}
-              className={`rounded-full border px-3 py-1 ${active ? 'border-[var(--accent)] font-semibold' : 'border-[var(--border)]'}`}
+              className="chip-toggle"
             >
               {p.label}
             </button>
@@ -155,7 +165,7 @@ export function PriceFilter({
         })}
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 text-sm">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-[var(--border)] pt-4 text-sm">
         <fieldset className="flex items-center gap-3">
           <legend className="sr-only">{t('results.basis')}</legend>
           <span aria-hidden="true">{t('results.basis')}:</span>
@@ -163,6 +173,7 @@ export function PriceFilter({
             <label key={b} className="flex items-center gap-1">
               <input
                 type="radio"
+                className="accent-[var(--accent)]"
                 name="basis"
                 checked={filters.basis === b}
                 onChange={() => set({ basis: b })}
@@ -176,7 +187,7 @@ export function PriceFilter({
           <select
             value={currency}
             onChange={(e) => onCurrency(e.target.value)}
-            className="rounded border border-[var(--border)] bg-transparent px-2 py-1"
+            className="field w-auto py-1.5"
           >
             {Object.keys(fx.rates)
               .sort()
@@ -192,7 +203,7 @@ export function PriceFilter({
           <select
             value={filters.sort}
             onChange={(e) => set({ sort: e.target.value as Sort })}
-            className="rounded border border-[var(--border)] bg-transparent px-2 py-1"
+            className="field w-auto py-1.5"
           >
             <option value="best">{t('results.sortBest')}</option>
             <option value="price">{t('results.sortPrice')}</option>
@@ -202,6 +213,7 @@ export function PriceFilter({
         <label className="flex items-center gap-1">
           <input
             type="checkbox"
+            className="accent-[var(--accent)]"
             checked={filters.includeFree}
             onChange={(e) => set({ includeFree: e.target.checked })}
           />

@@ -16,7 +16,9 @@ test('results arrive in price sections with status, check time, price source and
   const first = cards.first();
   await expect(first).toContainText(/Available|Likely available|Unconfirmed/);
   await expect(first).toContainText(/checked (just now|\d+ min ago)/);
-  await expect(first).toContainText(/first year · renews .*\/yr · price from Porkbun/);
+  await expect(first).toContainText(/first year/);
+  await expect(first).toContainText(/renews .*\/yr/);
+  await expect(first).toContainText(/price from Porkbun/);
   const buy = first.getByRole('link', { name: /^Buy .* at Porkbun/ });
   await expect(buy).toHaveAttribute('href', /^https:\/\/porkbun\.com\/checkout\/search\?q=/);
   await expect(buy).toHaveAttribute('target', '_blank');
@@ -31,7 +33,7 @@ test('copy, thumbs and re-check work on a card', async ({ page, context }) => {
   await search(page);
   await openSection(page, /^\$1–100/);
   const card = page.getByTestId('section-budget').getByTestId('result-card').first();
-  const name = (await card.locator('span.text-lg').textContent()) ?? '';
+  const name = (await card.getByTestId('name').textContent()) ?? '';
   await card.getByRole('button', { name: /^Copy / }).click();
   await expect(card.getByRole('status')).toContainText(/Copied|^$/);
   const up = card.getByRole('button', { name: /^Good suggestion/ });

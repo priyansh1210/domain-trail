@@ -23,9 +23,12 @@ const countText = (n: number) => (n === 1 ? t('results.countOne') : t('results.c
 
 function Skeletons() {
   return (
-    <ul className="flex flex-col gap-2" aria-hidden="true">
+    <ul className="card flex flex-col overflow-hidden" aria-hidden="true">
       {Array.from({ length: 3 }, (_, i) => (
-        <li key={i} className="h-28 animate-pulse rounded-lg bg-[var(--surface)]" />
+        <li
+          key={i}
+          className="h-20 animate-pulse border-t border-[var(--border)] bg-[var(--surface-2)] first:border-t-0"
+        />
       ))}
     </ul>
   );
@@ -45,17 +48,13 @@ function CardList({
   const [shown, setShown] = useState(PAGE);
   return (
     <>
-      <ol className="flex flex-col gap-2">
+      <ol className="card flex flex-col overflow-hidden">
         {items.slice(0, shown).map((r) => (
           <ResultCard key={r.fqdn} item={r} searchRef={searchRef} currency={currency} fx={fx} />
         ))}
       </ol>
       {items.length > shown && (
-        <button
-          type="button"
-          onClick={() => setShown((n) => n + PAGE)}
-          className="self-start rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm"
-        >
+        <button type="button" onClick={() => setShown((n) => n + PAGE)} className="btn btn-ghost self-start">
           {t('results.showMore')}
         </button>
       )}
@@ -101,7 +100,7 @@ export function Sections({
   const current = visible.includes(tab) ? tab : (visible.find((s) => items[s].length) ?? visible[0]!);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-7">
       {/* Small screens: one tab per section with its count (FR-UX-003). */}
       <div
         role="tablist"
@@ -117,7 +116,7 @@ export function Sections({
             aria-selected={current === s}
             aria-controls={`section-${s}`}
             onClick={() => onTab(s)}
-            className={`shrink-0 rounded-full border px-3 py-1 text-sm ${current === s ? 'border-[var(--accent)] font-semibold' : 'border-[var(--border)]'}`}
+            className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm ${current === s ? 'border-[var(--accent)] bg-[var(--accent-soft)] font-semibold text-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)]'}`}
           >
             {sectionTitle(s, currency, fx)} ({items[s].length})
           </button>
@@ -138,9 +137,12 @@ export function Sections({
             className={`flex flex-col gap-3 ${current === s ? '' : 'hidden md:flex'}`}
             data-testid={`section-${s}`}
           >
-            <h2 id={`heading-${s}`} className="flex items-baseline gap-2 text-lg font-semibold">
+            <h2 id={`heading-${s}`} className="flex flex-wrap items-baseline gap-x-2.5 text-lg">
               {sectionTitle(s, currency, fx)}
-              <span className="text-sm font-normal text-[var(--muted)]" data-testid="section-count">
+              <span
+                className="font-[family-name:var(--font-body)] text-sm font-normal tracking-normal text-[var(--muted)]"
+                data-testid="section-count"
+              >
                 {countText(list.length)}
               </span>
             </h2>
@@ -153,7 +155,7 @@ export function Sections({
               !done ? (
                 <Skeletons />
               ) : (
-                <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-[var(--border)] p-3 text-sm">
+                <div className="flex flex-col items-start gap-3 rounded-[var(--radius)] border border-dashed border-[var(--border)] bg-[var(--surface)] p-4 text-sm">
                   <p>
                     {unfiltered(s)
                       ? t('results.emptyFiltered')
@@ -163,11 +165,7 @@ export function Sections({
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {unfiltered(s) && (
-                      <button
-                        type="button"
-                        onClick={onResetRange}
-                        className="rounded-lg border border-[var(--border)] px-3 py-1.5"
-                      >
+                      <button type="button" onClick={onResetRange} className="btn btn-ghost">
                         {t('results.resetRange')}
                       </button>
                     )}
@@ -176,7 +174,7 @@ export function Sections({
                         type="button"
                         onClick={() => onFindMore(s)}
                         disabled={view.findingMore}
-                        className="rounded-lg border border-[var(--border)] px-3 py-1.5 disabled:opacity-60"
+                        className="btn btn-ghost"
                       >
                         {view.findingMore ? t('results.findingMore') : t('results.findMore')}
                       </button>
@@ -191,7 +189,7 @@ export function Sections({
                 )}
                 {hosting.length > 0 && (
                   <div className="flex flex-col gap-2" data-testid="free-hosting">
-                    <h3 className="font-semibold">{t('results.hostingTitle')}</h3>
+                    <h3 className="text-base">{t('results.hostingTitle')}</h3>
                     <p className="text-sm text-[var(--muted)]">{t('results.hostingNote')}</p>
                     <CardList items={hosting} searchRef={searchRef} currency={currency} fx={fx} />
                   </div>
@@ -201,7 +199,7 @@ export function Sections({
                     type="button"
                     onClick={() => onFindMore(s)}
                     disabled={view.findingMore}
-                    className="self-start rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm disabled:opacity-60"
+                    className="btn btn-ghost self-start"
                   >
                     {view.findingMore ? t('results.findingMore') : t('results.findMore')}
                   </button>

@@ -3,74 +3,71 @@
 import { intake } from '@domains-all/config/defaults';
 import { normalize } from '@domains-all/core/client/normalize';
 import type { Example, Preferences } from '@domains-all/core/client';
+import {
+  type FxTable,
+  formatMoney,
+  positionToUsd,
+  SLIDER_STEPS,
+  usdToPosition,
+} from '@domains-all/pricing/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { defaultCurrency } from '@/lib/client/results';
 import type { StartError } from '@/lib/client/search';
 import { format } from '@/lib/format';
 import { HumanCheck, type HumanCheckHandle } from './human-check';
+import { TldInput } from './tld-input';
+
+const INF = Number.POSITIVE_INFINITY;
+/** Shared with the results page, so both show the same currency. */
+const CURRENCY_KEY = 'display-currency';
 
 interface PrefsForm {
-  preferredTlds: string;
+  preferredTlds: string[];
   maxLength: number;
   allowHyphens: boolean;
   allowDigits: boolean;
   country: string;
-  priceMin: string;
-  priceMax: string;
+  /** USD; Infinity = no upper limit */
+  priceMin: number;
+  priceMax: number;
 }
 
 const DEFAULT_PREFS: PrefsForm = {
-  preferredTlds: '',
+  preferredTlds: [],
   maxLength: intake.preferenceDefaults.maxLength,
   allowHyphens: intake.preferenceDefaults.allowHyphens,
   allowDigits: intake.preferenceDefaults.allowDigits,
   country: 'auto',
-  priceMin: '',
-  priceMax: '',
+  priceMin: 0,
+  priceMax: INF,
 };
 
 type Text = Record<string, string>;
+type T = (k: string, v?: Record<string, string | number>) => string;
 
 /**
  * Light checks for instant feedback. The server validates the whole request with the shared schema and answers
  * with field messages, so nothing here is trusted (spec 001 tech §9).
  */
-function toPreferences(
-  f: PrefsForm,
-  t: (k: string, v?: Record<string, string | number>) => string,
-  forceSearch = false,
-): { prefs?: Preferences; error?: string } {
+function toPreferences(f: PrefsForm, t: T, forceSearch = false): { prefs?: Preferences; error?: string } {
   const [minLen, maxLen] = intake.maxLabelLengthRange;
   const maxLength = Number(f.maxLength);
   if (!Number.isInteger(maxLength) || maxLength < minLen || maxLength > maxLen) {
     return { error: t('form.errorMaxLength', { min: minLen, max: maxLen }) };
   }
-  const preferredTlds = f.preferredTlds
-    .split(/[,\s]+/)
-    .map((s) => s.trim().toLowerCase().replace(/^\./, ''))
-    .filter(Boolean);
-  const badTld = preferredTlds.find((tld) => !/^[a-z0-9-]+(\.[a-z0-9-]+)?$/.test(tld));
-  if (badTld || preferredTlds.length > 20)
-    return { error: t('form.errorTld', { tld: badTld ?? preferredTlds[20] ?? '' }) };
-  const cents = (s: string) => (s.trim() === '' ? null : Math.round(Number(s) * 100));
-  const priceMinCents = cents(f.priceMin) ?? 0;
-  const priceMaxCents = cents(f.priceMax);
-  if (
-    !Number.isFinite(priceMinCents) ||
-    priceMinCents < 0 ||
-    (priceMaxCents !== null && (!Number.isFinite(priceMaxCents) || priceMaxCents < priceMinCents))
-  ) {
-    return { error: t('form.errorPrice') };
-  }
+  const badTld = f.preferredTlds.find((tld) => !/^[a-z0-9-]+(\.[a-z0-9-]+)?$/.test(tld));
+  if (badTld || f.preferredTlds.length > 20)
+    return { error: t('form.errorTld', { tld: badTld ?? f.preferredTlds[20] ?? '' }) };
   return {
     prefs: {
-      preferredTlds,
+      preferredTlds: f.preferredTlds,
       maxLength,
       allowHyphens: f.allowHyphens,
       allowDigits: f.allowDigits,
       country: f.country,
-      priceMinCents,
-      priceMaxCents,
+      priceMinCents: Math.round(f.priceMin * 100),
+      priceMaxCents: f.priceMax === INF ? null : Math.round(f.priceMax * 100),
       includeFree: true,
       forceSearch,
     },
@@ -96,18 +93,29 @@ export function SearchForm({
   text,
   examples,
   countries,
+  fx,
 }: {
   text: Text;
   examples: readonly Example[];
   countries: Array<[string, string]>;
+  /** Exchange-rate snapshot for showing the price range in the visitor's currency (approximate). */
+  fx: FxTable;
 }) {
-  const t = (key: string, vars?: Record<string, string | number>) =>
-    format(text[key.replace(/^form\./, '')], vars);
+  const t: T = (key, vars) => format(text[key.replace(/^form\./, '')], vars);
   const router = useRouter();
   const params = useSearchParams();
-  const ids = { text: useId(), counter: useId(), error: useId() };
+  const ids = {
+    text: useId(),
+    counter: useId(),
+    error: useId(),
+    price: useId(),
+    currency: useId(),
+    country: useId(),
+    maxLen: useId(),
+  };
   const [description, setDescription] = useState('');
   const [prefs, setPrefs] = useState<PrefsForm>(DEFAULT_PREFS);
+  const [currency, setCurrency] = useState('USD');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const human = useRef<HumanCheckHandle>(null);
@@ -122,12 +130,48 @@ export function SearchForm({
     });
   }, [params]);
 
+  // The visitor's currency: their earlier choice, else their region's (FR-PRC-010).
+  useEffect(() => {
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem(CURRENCY_KEY);
+    } catch {
+      // storage blocked: use the region
+    }
+    setCurrency(
+      stored && (stored === 'USD' || fx.rates[stored])
+        ? stored
+        : defaultCurrency(navigator.languages ?? [navigator.language], fx.rates),
+    );
+  }, [fx.rates]);
+
+  function chooseCurrency(c: string) {
+    setCurrency(c);
+    try {
+      localStorage.setItem(CURRENCY_KEY, c);
+    } catch {
+      // remembered for this page only
+    }
+  }
+
   const normalized = useMemo(() => normalize(description), [description]);
   const length = normalized.text.length;
   const tooLong = length > intake.descriptionMax;
   const removed = Object.entries(normalized.removed)
     .filter(([, v]) => v)
     .map(([k]) => t(`form.removed${k[0]!.toUpperCase()}${k.slice(1)}`));
+
+  const money = (usd: number) => formatMoney(Math.round(usd * 100), currency, fx);
+  const priceText =
+    prefs.priceMin <= 0 && prefs.priceMax === INF
+      ? t('form.priceAny')
+      : prefs.priceMax === INF
+        ? t('form.priceFrom', { min: money(prefs.priceMin) })
+        : prefs.priceMin <= 0
+          ? t('form.priceUpTo', { max: money(prefs.priceMax) })
+          : t('form.priceBetween', { min: money(prefs.priceMin), max: money(prefs.priceMax) });
+  const lo = usdToPosition(prefs.priceMin);
+  const hi = usdToPosition(prefs.priceMax);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -157,134 +201,178 @@ export function SearchForm({
     <form
       onSubmit={submit}
       noValidate
-      className="flex flex-col gap-4"
+      className="card flex flex-col gap-6 p-5 shadow-[0_1px_2px_rgba(15,30,51,0.04),0_8px_24px_rgba(15,30,51,0.06)] sm:p-6"
       aria-describedby={error ? ids.error : undefined}
     >
-      <label htmlFor={ids.text} className="text-lg font-medium">
-        {t('form.label')}
-      </label>
-      <textarea
-        id={ids.text}
-        name="description"
-        rows={5}
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        onFocus={() => human.current?.warmUp()}
-        placeholder={t('form.placeholder')}
-        aria-describedby={ids.counter}
-        aria-invalid={tooLong || undefined}
-        className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-base focus:outline-2 focus:outline-[var(--accent)]"
-      />
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-        <span
-          id={ids.counter}
-          className={tooLong ? 'font-semibold text-[var(--danger)]' : 'text-[var(--muted)]'}
-          aria-live={tooLong ? 'polite' : 'off'}
-        >
-          {tooLong
-            ? t('form.tooLong', { max: intake.descriptionMax })
-            : t('form.counter', { count: length, max: intake.descriptionMax })}
-        </span>
-      </div>
-      {removed.length > 0 && (
-        <p className="text-sm text-[var(--muted)]" role="status">
-          {t('form.removed', { what: removed.join(', ') })}
-        </p>
-      )}
-
-      <div>
-        <p className="mb-2 text-sm text-[var(--muted)]">{t('form.examples')}</p>
-        <ul className="flex flex-wrap gap-2">
-          {examples.map((ex) => (
-            <li key={ex.label}>
-              <button
-                type="button"
-                onClick={() => setDescription(ex.description)}
-                className="rounded-full border border-[var(--border)] px-3 py-1 text-sm hover:bg-[var(--surface)] focus:outline-2 focus:outline-[var(--accent)]"
-              >
-                {ex.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <details className="rounded-lg border border-[var(--border)] p-3">
-        <summary className="cursor-pointer font-medium">{t('form.moreOptions')}</summary>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-            {t('form.preferredTlds')}
-            <input
-              type="text"
-              value={prefs.preferredTlds}
-              onChange={(e) => setPrefs({ ...prefs, preferredTlds: e.target.value })}
-              className="rounded border border-[var(--border)] bg-[var(--surface)] p-2"
-            />
+      <div className="flex flex-col gap-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <label htmlFor={ids.text} className="font-semibold">
+            {t('form.label')}
           </label>
-          <label className="flex flex-col gap-1 text-sm">
-            {t('form.maxLength')}
+          <span
+            id={ids.counter}
+            className={`text-[0.8125rem] tabular-nums ${tooLong ? 'font-semibold text-[var(--danger)]' : 'text-[var(--muted)]'}`}
+            aria-live={tooLong ? 'polite' : 'off'}
+          >
+            {tooLong
+              ? t('form.tooLong', { max: intake.descriptionMax })
+              : t('form.counter', { count: length, max: intake.descriptionMax })}
+          </span>
+        </div>
+        <textarea
+          id={ids.text}
+          name="description"
+          rows={4}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          onFocus={() => human.current?.warmUp()}
+          placeholder={t('form.placeholder')}
+          aria-describedby={ids.counter}
+          aria-invalid={tooLong || undefined}
+          className="field min-h-28 resize-y leading-relaxed"
+        />
+        {removed.length > 0 && (
+          <p className="text-sm text-[var(--muted)]" role="status">
+            {t('form.removed', { what: removed.join(', ') })}
+          </p>
+        )}
+      </div>
+
+      <TldInput
+        value={prefs.preferredTlds}
+        onChange={(preferredTlds) => setPrefs((p) => ({ ...p, preferredTlds }))}
+        text={t}
+      />
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <span id={ids.price} className="font-semibold">
+            {t('form.priceLabel')}
+          </span>
+          <output className="wordmark text-[0.95rem] tabular-nums" aria-live="off">
+            {priceText}
+          </output>
+        </div>
+        <div
+          className="range-dual"
+          role="group"
+          aria-labelledby={ids.price}
+          style={
+            {
+              '--lo': `${(lo / SLIDER_STEPS) * 100}%`,
+              '--hi': `${(hi / SLIDER_STEPS) * 100}%`,
+            } as React.CSSProperties
+          }
+        >
+          <input
+            type="range"
+            min={0}
+            max={SLIDER_STEPS}
+            step={1}
+            value={lo}
+            aria-label={t('form.priceLow')}
+            aria-valuetext={money(prefs.priceMin)}
+            onChange={(e) => {
+              const v = positionToUsd(Math.min(Number(e.target.value), hi - 1));
+              setPrefs((p) => ({ ...p, priceMin: v }));
+            }}
+          />
+          <input
+            type="range"
+            min={0}
+            max={SLIDER_STEPS}
+            step={1}
+            value={hi}
+            aria-label={t('form.priceHigh')}
+            aria-valuetext={prefs.priceMax === INF ? t('form.priceNoLimit') : money(prefs.priceMax)}
+            onChange={(e) => {
+              const v = positionToUsd(Math.max(Number(e.target.value), lo + 1));
+              setPrefs((p) => ({ ...p, priceMax: v }));
+            }}
+          />
+        </div>
+        <div className="flex justify-between text-xs text-[var(--muted)] tabular-nums" aria-hidden="true">
+          <span>{money(0)}</span>
+          <span>{money(10_000)}+</span>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <label htmlFor={ids.country} className="font-semibold">
+            {t('form.country')}
+          </label>
+          <select
+            id={ids.country}
+            value={prefs.country}
+            onChange={(e) => setPrefs((p) => ({ ...p, country: e.target.value }))}
+            className="field"
+          >
+            <option value="auto">{t('form.countryAuto')}</option>
+            <option value="global">{t('form.countryGlobal')}</option>
+            {countries.map(([code, name]) => (
+              <option key={code} value={code}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-2">
+          <label htmlFor={ids.currency} className="font-semibold">
+            {t('form.currency')}
+          </label>
+          <select
+            id={ids.currency}
+            value={currency}
+            onChange={(e) => chooseCurrency(e.target.value)}
+            className="field"
+          >
+            {['USD', ...Object.keys(fx.rates).filter((c) => c !== 'USD')].sort().map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {currency !== 'USD' && <p className="-mt-3 text-xs text-[var(--muted)]">{t('form.priceApprox')}</p>}
+
+      <details className="more">
+        <summary className="inline-flex cursor-pointer items-center gap-2 font-semibold text-[var(--accent)]">
+          {t('form.moreOptions')}
+        </summary>
+        <div className="mt-4 grid items-end gap-4 sm:grid-cols-3">
+          <div className="flex flex-col gap-2">
+            <label htmlFor={ids.maxLen} className="text-sm font-semibold">
+              {t('form.maxLength')}
+            </label>
             <input
+              id={ids.maxLen}
               type="number"
               min={intake.maxLabelLengthRange[0]}
               max={intake.maxLabelLengthRange[1]}
               value={prefs.maxLength}
-              onChange={(e) => setPrefs({ ...prefs, maxLength: Number(e.target.value) })}
-              className="rounded border border-[var(--border)] bg-[var(--surface)] p-2"
+              onChange={(e) => setPrefs((p) => ({ ...p, maxLength: Number(e.target.value) }))}
+              className="field"
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            {t('form.country')}
-            <select
-              value={prefs.country}
-              onChange={(e) => setPrefs({ ...prefs, country: e.target.value })}
-              className="rounded border border-[var(--border)] bg-[var(--surface)] p-2"
-            >
-              <option value="auto">{t('form.countryAuto')}</option>
-              <option value="global">{t('form.countryGlobal')}</option>
-              {countries.map(([code, name]) => (
-                <option key={code} value={code}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-2 text-sm">
+          </div>
+          <label className="flex min-h-11 items-center gap-2 text-sm">
             <input
               type="checkbox"
+              className="h-[1.1rem] w-[1.1rem] accent-[var(--accent)]"
               checked={prefs.allowHyphens}
-              onChange={(e) => setPrefs({ ...prefs, allowHyphens: e.target.checked })}
+              onChange={(e) => setPrefs((p) => ({ ...p, allowHyphens: e.target.checked }))}
             />
             {t('form.allowHyphens')}
           </label>
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex min-h-11 items-center gap-2 text-sm">
             <input
               type="checkbox"
+              className="h-[1.1rem] w-[1.1rem] accent-[var(--accent)]"
               checked={prefs.allowDigits}
-              onChange={(e) => setPrefs({ ...prefs, allowDigits: e.target.checked })}
+              onChange={(e) => setPrefs((p) => ({ ...p, allowDigits: e.target.checked }))}
             />
             {t('form.allowDigits')}
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            {t('form.priceMin')}
-            <input
-              type="number"
-              min={0}
-              inputMode="decimal"
-              value={prefs.priceMin}
-              onChange={(e) => setPrefs({ ...prefs, priceMin: e.target.value })}
-              className="rounded border border-[var(--border)] bg-[var(--surface)] p-2"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            {t('form.priceMax')}
-            <input
-              type="number"
-              min={0}
-              inputMode="decimal"
-              value={prefs.priceMax}
-              onChange={(e) => setPrefs({ ...prefs, priceMax: e.target.value })}
-              className="rounded border border-[var(--border)] bg-[var(--surface)] p-2"
-            />
           </label>
         </div>
       </details>
@@ -295,7 +383,7 @@ export function SearchForm({
         <p
           id={ids.error}
           role="alert"
-          className="rounded-lg border border-[var(--danger)] p-3 text-sm text-[var(--danger)]"
+          className="rounded-[10px] border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]"
         >
           {error}
         </p>
@@ -305,10 +393,27 @@ export function SearchForm({
         type="submit"
         disabled={busy || tooLong}
         aria-busy={busy || undefined}
-        className="rounded-lg bg-[var(--accent)] px-5 py-3 text-base font-semibold text-[var(--on-accent)] disabled:opacity-60"
+        className="btn btn-primary w-full py-3.5 text-base"
       >
         {busy ? t('form.submitting') : t('form.submit')}
       </button>
+
+      <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--muted)]">
+        <span>{t('form.examples')}</span>
+        <ul className="contents">
+          {examples.map((ex) => (
+            <li key={ex.label}>
+              <button
+                type="button"
+                onClick={() => setDescription(ex.description)}
+                className="chip-toggle bg-[var(--bg)] text-[var(--fg)]"
+              >
+                {ex.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </form>
   );
 }

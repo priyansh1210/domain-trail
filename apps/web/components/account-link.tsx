@@ -17,13 +17,13 @@ export function AccountLink() {
   if (!session.user) {
     if (path === '/sign-in') return null;
     return (
-      <Link href={signInHref(path || '/')} className="underline" data-testid="sign-in-link">
+      <Link href={signInHref(path || '/')} className="btn btn-ghost" data-testid="sign-in-link">
         {t('header.signIn')}
       </Link>
     );
   }
   return (
-    <Link href="/account" className="underline" data-testid="account-link">
+    <Link href="/account" className="btn btn-ghost" data-testid="account-link">
       {t(session.user.isAnonymous ? 'header.savedItems' : 'header.account')}
     </Link>
   );

@@ -15,12 +15,26 @@ const site = siteIdentity();
 const [nameHead, nameTail] = wordmarkParts(site.name);
 /** Cloudflare Web Analytics: cookieless page counts (spec 009, FR-PRIV-003); only when the owner sets a token. */
 const CF_ANALYTICS = process.env.NEXT_PUBLIC_CF_ANALYTICS_TOKEN;
-/** The logo's typeface, served from this site (CSP font-src 'self'); licence in assets/fonts/OFL.txt. */
+// Typefaces, served from this site (CSP font-src 'self'; licences in assets/fonts): Manrope ExtraBold for the
+// logo and headings, IBM Plex Sans for reading, IBM Plex Mono for domain names.
 const display = localFont({
   src: '../assets/fonts/Manrope-ExtraBold.woff',
   weight: '800',
   variable: '--font-display',
   display: 'swap',
+});
+const body = localFont({
+  src: '../assets/fonts/IBMPlexSans-Variable.woff',
+  weight: '400 600',
+  variable: '--font-body',
+  display: 'swap',
+});
+const mono = localFont({
+  src: '../assets/fonts/IBMPlexMono-SemiBold.woff',
+  weight: '600',
+  variable: '--font-mono',
+  display: 'swap',
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -35,25 +49,25 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={display.variable}>
+    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body className="flex min-h-dvh flex-col antialiased">
-        <header className="border-b border-[var(--border)]">
-          <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
-            <Link href="/" className="flex items-center gap-2.5 rounded-md">
-              <BrandMark className="h-9 w-9 shrink-0" />
-              <span className="wordmark text-[1.375rem] leading-none">
+        <header className="border-b border-[var(--border)] bg-[var(--surface)]">
+          <div className="mx-auto flex max-w-[70rem] items-center justify-between gap-4 px-4 py-4 sm:px-5">
+            <Link href="/" className="flex items-center gap-3 rounded-md">
+              <BrandMark className="h-9 w-9 shrink-0 sm:h-[2.625rem] sm:w-[2.625rem]" />
+              <span className="wordmark text-[1.375rem] leading-none sm:text-[1.7rem]">
                 {nameHead}
                 {nameTail && <span className="text-[var(--brand-t)]">{nameTail}</span>}
               </span>
             </Link>
-            <nav aria-label="Account" className="text-sm">
+            <nav aria-label="Account" className="text-[0.9375rem]">
               <AccountLink />
             </nav>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">{children}</main>
-        <footer className="border-t border-[var(--border)]">
-          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-4 text-sm text-[var(--muted)]">
+        <main className="site-main w-full flex-1 px-4 py-8 sm:px-5 sm:py-10">{children}</main>
+        <footer className="border-t border-[var(--border)] bg-[var(--surface)]">
+          <div className="mx-auto flex max-w-[70rem] flex-wrap items-center justify-between gap-3 px-4 py-5 text-sm text-[var(--muted)] sm:px-5">
             <p>{t('footer.disclaimer')}</p>
             <nav aria-label="Footer" className="flex flex-wrap gap-4">
               <DataAge

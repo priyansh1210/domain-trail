@@ -1,48 +1,55 @@
 @import 'tailwindcss';
 
+/* Light design (owner decision 2026-10-11: a professional light frontend; prototype
+   https://claude.ai/artifact/DpkbmnRCMVtyp5vjuAiQKZ). Cool off-white page, navy text, ocean teal for actions,
+   signal cyan for live activity and amber for the moment a name is found. */
 :root {
-  --bg: #ffffff;
-  --fg: #111827;
-  --muted: #4b5563;
-  --surface: #f3f4f6;
-  --border: #d1d5db;
-  --accent: #1d4ed8;
+  --bg: #f4f7fa;
+  --fg: #0f1e33;
+  --muted: #566578;
+  --surface: #ffffff;
+  --surface-2: #f9fbfc;
+  --border: #dce3eb;
+  --accent: #0b6a88;
   --on-accent: #ffffff;
-  --warn: #b45309;
-  --danger: #b91c1c;
+  --accent-soft: #e3f1f6;
+  --signal: #1aa9d6;
+  --found: #e9a23b;
+  --ok: #137a55;
+  --ok-soft: #e4f4ec;
+  --warn: #9a5a06;
+  --warn-soft: #fbf1e2;
+  --warn-line: #efd9b4;
+  --danger: #b42318;
+  --danger-soft: #fdecea;
   /* Logo colours (logos/final/brand.html) */
   --brand-d: #0f1e33;
   --brand-t: #0b6a88;
   --brand-point: #e9a23b;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --radius: 12px;
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --brand-d: #ffffff;
-    --brand-t: #3fb8da;
-    --brand-point: #f2b451;
-    --bg: #0b1120;
-    --fg: #f3f4f6;
-    --muted: #9ca3af;
-    --surface: #1f2937;
-    --border: #374151;
-    --accent: #93c5fd;
-    --on-accent: #0b1120;
-    --warn: #fbbf24;
-    --danger: #f87171;
-  }
+html {
+  background: var(--bg);
 }
 
 body {
   background: var(--bg);
   color: var(--fg);
+  font-family: var(--font-body), 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
 }
 
-/* The site name beside the logo mark, set in the logo's typeface. */
-.wordmark {
-  font-family: var(--font-display), system-ui, sans-serif;
+h1,
+h2,
+h3 {
+  font-family: var(--font-display), 'Segoe UI', system-ui, sans-serif;
   font-weight: 800;
-  letter-spacing: -0.012em;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
 }
 
 a:focus-visible,
@@ -55,11 +62,280 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
-/* Two-handle price range (spec 006 FR-PRC-004): two native range inputs share one track, so each handle keeps the
-   browser's built-in keyboard and screen-reader support (NFR-PRC-003). */
+/* The site name beside the logo mark, set in the logo's typeface. */
+.wordmark {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+/* Domain names: monospace, extension in teal. */
+.domain {
+  font-family: var(--font-mono), ui-monospace, Consolas, monospace;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Page widths: home and results use the wide column; text pages keep a comfortable reading width. */
+.site-main > * {
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
+}
+.site-main > .page-wide {
+  max-width: 70rem;
+}
+
+/* Shared pieces */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.field {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 0.7rem 0.9rem;
+  color: var(--fg);
+}
+.field:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  border-color: var(--accent);
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 10px;
+  padding: 0.55rem 0.95rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.15s var(--ease),
+    border-color 0.15s var(--ease),
+    box-shadow 0.15s var(--ease),
+    transform 0.15s var(--ease);
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.btn-primary:not(:disabled):hover {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 16px rgba(11, 106, 136, 0.25);
+}
+.btn-primary:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+.btn-dark {
+  background: var(--fg);
+  color: #ffffff;
+}
+.btn-dark:hover {
+  background: var(--accent);
+}
+.btn-ghost {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-weight: 500;
+}
+.btn-ghost:not(:disabled):hover {
+  border-color: var(--accent);
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pill-ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.pill-warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.chip-toggle {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition:
+    border-color 0.15s var(--ease),
+    background-color 0.15s var(--ease);
+}
+.chip-toggle:hover {
+  border-color: var(--accent);
+}
+.chip-toggle[aria-pressed='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Preferred extensions: a text box that turns each typed extension into a removable tag, with suggestions. */
+.tokens {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 3.1rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: text;
+}
+.tokens:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  border-color: var(--accent);
+}
+.tokens input {
+  flex: 1 1 14ch;
+  min-width: 12ch;
+  border: 0;
+  outline: 0;
+  background: none;
+  padding: 0.3rem 0.15rem;
+  color: var(--fg);
+}
+.tokens input::placeholder {
+  color: #7a8899;
+}
+.token-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.token {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 3px 3px 9px;
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid #bfe0ea;
+  font-family: var(--font-mono), ui-monospace, Consolas, monospace;
+  font-weight: 600;
+  font-size: 0.875rem;
+  animation: pop 0.22s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+.token button {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.token button:hover {
+  background: rgba(11, 106, 136, 0.14);
+}
+.suggest {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  max-height: 300px;
+  overflow: auto;
+  box-shadow: 0 14px 34px rgba(15, 30, 51, 0.14);
+  animation: rise 0.16s var(--ease) both;
+}
+.suggest li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+.suggest li mark {
+  background: none;
+  color: var(--accent);
+}
+.suggest li[aria-selected='true'] {
+  background: var(--accent-soft);
+}
+.suggest .meta {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.suggest .none {
+  cursor: default;
+  color: var(--muted);
+}
+
+/* "More options": a chevron that turns when open. */
+.more summary {
+  list-style: none;
+}
+.more summary::-webkit-details-marker {
+  display: none;
+}
+.more summary::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.2s var(--ease);
+}
+.more[open] summary::before {
+  transform: rotate(45deg);
+}
+
+/* Two-handle price range (spec 006 FR-PRC-004): two native range inputs share one track, so each handle keeps
+   the browser's built-in keyboard and screen-reader support (NFR-PRC-003). --lo / --hi colour the chosen part. */
 .range-dual {
   position: relative;
   height: 2rem;
+  --lo: 0%;
+  --hi: 100%;
 }
 .range-dual::before {
   content: '';
@@ -67,10 +343,16 @@ textarea:focus-visible {
   left: 0;
   right: 0;
   top: 50%;
-  height: 4px;
+  height: 6px;
   transform: translateY(-50%);
   border-radius: 9999px;
-  background: var(--border);
+  background: linear-gradient(
+    to right,
+    var(--border) var(--lo),
+    var(--accent) var(--lo),
+    var(--accent) var(--hi),
+    var(--border) var(--hi)
+  );
 }
 .range-dual input[type='range'] {
   position: absolute;
@@ -82,25 +364,98 @@ textarea:focus-visible {
   appearance: none;
   -webkit-appearance: none;
 }
+.range-dual input[type='range']:focus-visible {
+  outline: none;
+}
+.range-dual input[type='range']::-webkit-slider-runnable-track {
+  height: 2rem;
+  background: transparent;
+}
 .range-dual input[type='range']::-webkit-slider-thumb {
   pointer-events: auto;
   -webkit-appearance: none;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.375rem;
+  height: 1.375rem;
+  margin-top: 0.3125rem;
   border-radius: 9999px;
-  background: var(--accent);
-  border: 2px solid var(--bg);
-  cursor: pointer;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 4px rgba(15, 30, 51, 0.2);
+  cursor: grab;
+}
+.range-dual input[type='range']:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .range-dual input[type='range']::-moz-range-thumb {
   pointer-events: auto;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.125rem;
+  height: 1.125rem;
   border-radius: 9999px;
-  background: var(--accent);
-  border: 2px solid var(--bg);
-  cursor: pointer;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 4px rgba(15, 30, 51, 0.2);
+  cursor: grab;
+}
+.range-dual input[type='range']:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .range-dual input[type='range']::-moz-range-track {
   background: transparent;
+}
+
+/* Motion: one shared easing; everything entering the page rises a little. No fade, so text never passes
+   through low contrast while it arrives. */
+@keyframes rise {
+  from {
+    transform: translateY(6px);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes beat {
+  0%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes pop {
+  from {
+    transform: scale(0.6);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes scan-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translate(-38%, -42%) scale(0.12);
+  }
+}
+.rise {
+  animation: rise 0.35s var(--ease) both;
+}
+.step-beat {
+  animation: beat 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
