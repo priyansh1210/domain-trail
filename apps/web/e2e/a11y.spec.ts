@@ -25,7 +25,7 @@ test('the results page has no serious accessibility problems and is not indexed'
     .fill('Online bakery in Pune delivering sourdough bread and cakes');
   await page.getByRole('button', { name: 'Find domains' }).click();
   await expect(page.getByTestId('feature-chips')).toBeVisible();
-  await expect(page.getByText('✓ Pricing')).toBeVisible({ timeout: 20_000 }); // filter, sections and cards present
+  await expect(page.locator('[data-step="pricing"][data-state="done"]')).toBeVisible({ timeout: 20_000 }); // filter, sections and cards present
   await noSeriousViolations(page);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
 });

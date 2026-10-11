@@ -92,5 +92,5 @@ test('signed-in users can edit the detected features; others are invited to sign
   await editor.getByRole('button', { name: 'Update results' }).click();
   await expect(page).not.toHaveURL(before);
   await expect(page.getByTestId('feature-chips')).toContainText('United Kingdom');
-  await expect(page.getByText('✓ Pricing')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('[data-step="pricing"][data-state="done"]')).toBeVisible({ timeout: 20_000 });
 });

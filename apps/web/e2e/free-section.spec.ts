@@ -29,7 +29,7 @@ test('a shared link shows the same results without the description', async ({ pa
       .getByTestId('section-budget')
       .getByTestId('result-card')
       .first()
-      .locator('span.text-lg')
+      .getByTestId('name')
       .textContent()) ?? '';
   const other = await browser.newContext();
   const shared = await other.newPage();

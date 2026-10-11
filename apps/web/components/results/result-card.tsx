@@ -10,15 +10,30 @@ import { WatchStar } from './save-controls';
 import { t } from '@/lib/i18n';
 import { reasonText } from '@/lib/reasons';
 
+const STATUS_TONE: Record<string, string> = {
+  available: 'pill-ok',
+  likely_available: 'pill-ok',
+  appears_free: 'pill-ok',
+  unknown: 'pill-warn',
+  not_verifiable: 'pill-warn',
+  available_premium: 'pill-warn',
+};
+
 function Badge({ tone = 'muted', children }: { tone?: 'muted' | 'warn'; children: React.ReactNode }) {
   return (
     <span
-      className={`rounded border px-1.5 py-0.5 text-xs ${tone === 'warn' ? 'border-[var(--warn)] text-[var(--warn)]' : 'border-[var(--border)] text-[var(--muted)]'}`}
+      className={
+        tone === 'warn'
+          ? 'pill pill-warn whitespace-normal'
+          : 'pill border border-[var(--border)] font-medium whitespace-normal text-[var(--muted)]'
+      }
     >
       {children}
     </span>
   );
 }
+
+const small = 'btn btn-ghost px-2.5 py-1 text-[0.8125rem]';
 
 export function ResultCard({
   item,
@@ -63,44 +78,82 @@ export function ResultCard({
 
   return (
     <li
-      className="flex flex-col gap-1.5 rounded-lg border border-[var(--border)] p-3"
+      className="rise flex flex-col gap-3 border-t border-[var(--border)] px-4 py-4 transition-colors first:border-t-0 hover:bg-[var(--surface-2)] sm:px-5"
       data-testid="result-card"
       data-status={item.status}
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <span className="text-lg font-semibold break-all">
-          {item.label}
-          <span className="text-[var(--accent)]">.{item.tld}</span>
-        </span>
+      <div className="grid gap-x-6 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="domain text-[1.2rem] break-all" data-testid="name">
+              {item.label}
+              <span className="text-[var(--accent)]">.{item.tld}</span>
+            </span>
+            <span
+              className={`pill whitespace-normal ${STATUS_TONE[item.status] ?? 'border border-[var(--border)] text-[var(--muted)]'}`}
+            >
+              {t(`results.status.${item.status}`)}
+            </span>
+          </div>
+          <p className="mt-1 text-[0.8125rem] text-[var(--muted)]">
+            {t('results.checked', { ago: t(`results.ago.${when.key}`, { n: when.n }) })}
+            {item.free && ` · ${t('results.provider', { name: item.free.providerName })}`}
+          </p>
+          {item.reasons.length > 0 && (
+            <ul className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-[var(--muted)]">
+              {item.reasons.slice(0, 3).map((r) => (
+                <li key={r.id}>{reasonText(r)}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         {p && (
-          <span className="font-semibold" data-testid="price">
-            {money(p.minYears > 1 ? p.upfrontUsdCents : p.firstYearUsdCents)}
-          </span>
+          <div className="flex flex-col tabular-nums sm:items-end sm:text-right">
+            <p className="flex items-baseline gap-1.5">
+              <span className="wordmark text-[1.15rem]" data-testid="price">
+                {money(p.minYears > 1 ? p.upfrontUsdCents : p.firstYearUsdCents)}
+              </span>
+              <span className="text-[0.8125rem] text-[var(--muted)]">
+                {p.minYears > 1
+                  ? t('results.minTermShort', { years: p.minYears })
+                  : t('results.firstYearShort')}
+              </span>
+            </p>
+            <p
+              className={`text-[0.8125rem] ${p.renewWarning ? 'font-medium text-[var(--warn)]' : 'text-[var(--muted)]'}`}
+            >
+              {t('results.renews', { price: money(p.renewUsdCents) })}
+            </p>
+            <p className="text-xs text-[var(--muted)]">{t('results.priceFrom', { source: p.source })}</p>
+          </div>
         )}
+
+        <div className="flex items-center gap-2 sm:justify-end">
+          {!isFree && <WatchStar item={item} onNote={setNote} />}
+          {p?.buyUrl && (
+            <a
+              href={p.buyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t('results.buyAt', { name: item.fqdn, source: p.source })}
+              className="btn btn-dark flex-1 sm:flex-none"
+            >
+              {t('results.buy')}
+            </a>
+          )}
+          {item.free && (
+            <a
+              href={item.free.conditions.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-ghost flex-1 sm:flex-none"
+            >
+              {t('results.officialSite')}
+            </a>
+          )}
+        </div>
       </div>
-
-      <p className="text-sm">
-        <span className={item.status === 'unknown' ? 'text-[var(--warn)]' : 'text-[var(--muted)]'}>
-          {t(`results.status.${item.status}`)}
-        </span>
-        <span className="text-[var(--muted)]">
-          {' · '}
-          {t('results.checked', { ago: t(`results.ago.${when.key}`, { n: when.n }) })}
-          {item.free && ` · ${t('results.provider', { name: item.free.providerName })}`}
-        </span>
-      </p>
-
-      {p && (
-        <p className="text-sm text-[var(--muted)]">
-          {p.minYears > 1
-            ? t('results.minTerm', { price: money(p.upfrontUsdCents), years: p.minYears })
-            : t('results.firstYear', { price: money(p.firstYearUsdCents) })}
-          {' · '}
-          {t('results.renews', { price: money(p.renewUsdCents) })}
-          {' · '}
-          {t('results.priceFrom', { source: p.source })}
-        </p>
-      )}
 
       {(p?.premium || p?.premiumPossible || p?.renewWarning || item.requiresHttps || item.restriction) && (
         <div className="flex flex-wrap gap-1.5">
@@ -114,18 +167,12 @@ export function ResultCard({
         </div>
       )}
 
-      {item.reasons.length > 0 && (
-        <ul className="flex flex-wrap gap-x-4 text-sm text-[var(--muted)]">
-          {item.reasons.slice(0, 3).map((r) => (
-            <li key={r.id}>{reasonText(r)}</li>
-          ))}
-        </ul>
-      )}
-
       {item.free && (
         <details className="text-sm">
-          <summary className="cursor-pointer underline">{t('results.steps')}</summary>
-          <ol className="mt-1 list-decimal pl-5">
+          <summary className="cursor-pointer font-medium text-[var(--accent)] underline underline-offset-2">
+            {t('results.steps')}
+          </summary>
+          <ol className="mt-1.5 list-decimal pl-5">
             {item.free.conditions.steps.map((s) => (
               <li key={s}>{s}</li>
             ))}
@@ -135,33 +182,12 @@ export function ResultCard({
         </details>
       )}
 
-      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-        {p?.buyUrl && (
-          <a
-            href={p.buyUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={t('results.buyAt', { name: item.fqdn, source: p.source })}
-            className="rounded-lg bg-[var(--accent)] px-3 py-1.5 font-semibold text-[var(--on-accent)]"
-          >
-            {t('results.buy')}
-          </a>
-        )}
-        {item.free && (
-          <a
-            href={item.free.conditions.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5"
-          >
-            {t('results.officialSite')}
-          </a>
-        )}
+      <div className="flex flex-wrap items-center gap-1.5">
         <button
           type="button"
           onClick={onCopy}
           aria-label={t('results.copyName', { name: item.fqdn })}
-          className="rounded-lg border border-[var(--border)] px-3 py-1.5"
+          className={small}
         >
           {t('results.copy')}
         </button>
@@ -171,19 +197,18 @@ export function ResultCard({
             onClick={onRecheck}
             disabled={busy}
             aria-label={t('results.recheckName', { name: item.fqdn })}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 disabled:opacity-60"
+            className={small}
           >
             {busy ? t('results.rechecking') : t('results.recheck')}
           </button>
         )}
-        <span className="ml-auto flex gap-1">
-          {!isFree && <WatchStar item={item} onNote={setNote} />}
+        <span className="ml-auto flex gap-1.5">
           <button
             type="button"
             aria-pressed={vote === 1}
             aria-label={t('results.thumbsUp', { name: item.fqdn })}
             onClick={() => onVote(1)}
-            className={`rounded-lg border px-2 py-1 ${vote === 1 ? 'border-[var(--accent)]' : 'border-[var(--border)]'}`}
+            className={`${small} ${vote === 1 ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : ''}`}
           >
             <span aria-hidden="true">👍</span>
           </button>
@@ -192,7 +217,7 @@ export function ResultCard({
             aria-pressed={vote === -1}
             aria-label={t('results.thumbsDown', { name: item.fqdn })}
             onClick={() => onVote(-1)}
-            className={`rounded-lg border px-2 py-1 ${vote === -1 ? 'border-[var(--accent)]' : 'border-[var(--border)]'}`}
+            className={`${small} ${vote === -1 ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : ''}`}
           >
             <span aria-hidden="true">👎</span>
           </button>

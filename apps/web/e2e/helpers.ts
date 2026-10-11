@@ -12,7 +12,7 @@ export async function search(page: Page, description = BAKERY) {
   await page.getByLabel('Describe your website').fill(description);
   await page.getByRole('button', { name: 'Find domains' }).click();
   await expect(page.getByTestId('feature-chips')).toBeVisible();
-  await expect(page.getByText('✓ Pricing')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('[data-step="pricing"][data-state="done"]')).toBeVisible({ timeout: 20_000 });
 }
 
 /** On phones the sections are tabs; open one before looking inside it. */

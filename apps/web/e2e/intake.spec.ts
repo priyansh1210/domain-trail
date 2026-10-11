@@ -32,7 +32,7 @@ test('detected features appear as chips within 2 seconds (US-1, FR-FEAT-010, NFR
   expect(Date.now() - started).toBeLessThan(2000);
   await expect(chips).toContainText('India');
   await expect(chips).toContainText('Food & drink › Bakery');
-  await expect(page.getByText('✓ Understanding your site')).toBeVisible();
+  await expect(page.locator('[data-step="features"][data-state="done"]')).toBeVisible();
 });
 
 test('too-long descriptions cannot be submitted (FR-INT-002)', async ({ page }) => {

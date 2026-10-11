@@ -59,7 +59,7 @@ export function SaveSearchButton({
       {saved ? (
         <Link
           href="/account"
-          className="rounded-lg border border-[var(--accent)] px-3 py-1.5"
+          className="btn btn-ghost border-[var(--accent)] text-[var(--accent)]"
           data-testid="saved-search"
         >
           ★ {t('results.savedSearch')}
@@ -74,25 +74,17 @@ export function SaveSearchButton({
             value={title}
             maxLength={80}
             onChange={(e) => setTitle(e.target.value)}
-            className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1"
+            className="field w-56 py-1.5"
           />
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded-lg bg-[var(--accent)] px-3 py-1.5 font-semibold text-[var(--on-accent)] disabled:opacity-60"
-          >
+          <button type="submit" disabled={busy} className="btn btn-primary">
             {t('results.saveConfirm')}
           </button>
-          <button type="button" onClick={() => setOpen(false)} className="underline">
+          <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost">
             {t('results.saveCancel')}
           </button>
         </form>
       ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="rounded-lg border border-[var(--border)] px-3 py-1.5"
-        >
+        <button type="button" onClick={() => setOpen(true)} className="btn btn-ghost">
           ☆ {t('results.saveSearch')}
         </button>
       )}
@@ -134,10 +126,18 @@ export function WatchStar({
       aria-label={t(watching ? 'results.unwatch' : 'results.watch', { name: item.fqdn })}
       onClick={toggle}
       disabled={busy}
-      className={`rounded-lg border px-2 py-1 ${watching ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-[var(--border)]'}`}
+      className={`grid h-[38px] w-[38px] shrink-0 place-items-center rounded-[10px] border bg-[var(--surface)] transition-colors ${watching ? 'border-[var(--found)] text-[var(--found)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--found)] hover:text-[var(--found)]'}`}
       data-testid="watch-star"
     >
-      <span aria-hidden="true">{watching ? '★' : '☆'}</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-[18px] w-[18px]">
+        <path
+          d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"
+          fill={watching ? 'currentColor' : 'none'}
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+      </svg>
     </button>
   );
 }
