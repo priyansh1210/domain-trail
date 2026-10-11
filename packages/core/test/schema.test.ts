@@ -22,6 +22,7 @@ describe('search request schema', () => {
       priceMaxCents: null,
       includeFree: true,
       forceSearch: false,
+      aiAnswers: false,
     });
   });
 

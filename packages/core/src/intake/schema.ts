@@ -22,6 +22,8 @@ export const PreferencesSchema = z
     priceMaxCents: z._default(z.nullable(int(0)), null), // null = no upper limit
     includeFree: z._default(z.boolean(), d.includeFree),
     forceSearch: z._default(z.boolean(), false), // "Search anyway" after the vague prompt
+    // The visitor's "AI answers" switch (FR-INT-015); the server allows it only for signed-in accounts (FR-JEV-019).
+    aiAnswers: z._default(z.boolean(), false),
   })
   .check(
     z.refine((p) => p.priceMaxCents === null || p.priceMaxCents >= p.priceMinCents, {

@@ -13,6 +13,7 @@ import {
 import { log } from '@domains-all/log';
 import { tldsInBand } from '@domains-all/pricing';
 import * as z from 'zod/mini';
+import { aiAllowed, decisionsFor } from './ai';
 import type { Bucket } from './limits';
 import { limitKey } from './search';
 import type { Services } from './services';
@@ -97,6 +98,7 @@ export async function handleMore(
   }
 
   const profile = rec.features;
+  const ai = aiAllowed(user, preferences.aiAnswers); // FR-JEV-019: decided again for this session
   const shown = new Set(parsed.data.exclude.map((f) => f.toLowerCase()));
   const shownLabels = new Set([...shown].map((f) => f.split('.')[0]!));
   const book = svc.prices.get();
@@ -111,13 +113,13 @@ export async function handleMore(
         strictBrand: false,
         searchId: id,
         seed: `${cacheKey(description, preferences)}:more:${priceMinCents}-${priceMaxCents ?? 'max'}`,
-        jev: svc.jev,
+        jev: decisionsFor(svc, ai),
         live: !svc.env.MOCK_EXTERNALS,
         wordCache: svc.wordCache,
         exclude: shownLabels,
         bandTlds: (pool) => tldsInBand(priceMinCents, priceMaxCents, pool, book),
       });
-      if (names.degraded) sink.send('degraded', { reason: names.degraded });
+      if (ai && names.degraded) sink.send('degraded', { reason: names.degraded });
       const verified = await streamVerify(sink, svc, {
         names,
         profile,

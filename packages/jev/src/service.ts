@@ -158,3 +158,25 @@ export function createDecisionService(opts: DecisionServiceOptions): DecisionSer
     },
   };
 }
+
+/**
+ * The decision service for searches without AI answers (FR-JEV-018): it asks nothing, sends nothing and is never
+ * degraded, so every stage uses its fallback rules. Usage is not recorded, because no model was used.
+ */
+export function rulesOnly(): DecisionService {
+  return {
+    breakerState: () => 'closed',
+    recordSearch: async () => undefined,
+    async ask(params) {
+      return {
+        answers: {},
+        failed: params.questions.map((q) => q.name),
+        usage: { inputTokens: 0, requests: 0 },
+        requestIds: [],
+        degraded: false,
+        modelVersion: 'rules',
+        refs: Object.fromEntries(params.questions.map((q) => [q.name, refOf(q.def)])),
+      };
+    },
+  };
+}

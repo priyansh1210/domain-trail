@@ -26,7 +26,7 @@ export interface PolicyContext {
   grievanceEmail: string;
 }
 
-export const POLICIES_EFFECTIVE = '2026-10-10';
+export const POLICIES_EFFECTIVE = '2026-10-11';
 
 export function privacyPolicy(c: PolicyContext): Policy {
   return {
@@ -77,7 +77,7 @@ export function privacyPolicy(c: PolicyContext): Policy {
         id: 'decision-model',
         heading: 'Automated suggestions',
         paragraphs: [
-          'Your description may be sent to a decision model (Jev by TypeSafe, through an AI gateway) to detect the kind of website and to rank names. Only the description and generated names are sent, never your e-mail or account. While the model is not connected, the site uses built-in rules instead and nothing is sent.',
+          'If you are signed in and switch on AI answers, your description is sent to a decision model (Jev by TypeSafe, through an AI gateway) to detect the kind of website and to rank names. Only the description and generated names are sent, never your e-mail or account. Searches without AI answers, which includes every search by a visitor who is not signed in, use built-in rules and send nothing to the model.',
         ],
       },
       {
@@ -111,7 +111,7 @@ export function privacyPolicy(c: PolicyContext): Policy {
             ['Supabase', 'Database and sign-in', 'Mumbai, India'],
             [
               'TypeSafe (Jev)',
-              'Decision model, when connected (description and names only)',
+              'Decision model, only for signed-in users who switch on AI answers (description and names only)',
               'United States',
             ],
             ['Google, GitHub', 'Sign-in, if you choose them', 'Their own locations'],

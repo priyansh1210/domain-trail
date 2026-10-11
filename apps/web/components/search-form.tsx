@@ -1,5 +1,6 @@
 'use client';
-// Home page form (spec 001 US-1…US-4, FR-INT-001…005, 011, 014). Validation uses the same schema as the server.
+// Home page form (spec 001 US-1…US-4, US-7, FR-INT-001…005, 011, 014, 015). Validation uses the same schema as the
+// server.
 import { intake } from '@domains-all/config/defaults';
 import { normalize } from '@domains-all/core/client/normalize';
 import type { Example, Preferences } from '@domains-all/core/client';
@@ -10,8 +11,10 @@ import {
   SLIDER_STEPS,
   usdToPosition,
 } from '@domains-all/pricing/client';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { loadSession, signInHref, useAccount } from '@/lib/client/account';
 import { defaultCurrency } from '@/lib/client/results';
 import type { StartError } from '@/lib/client/search';
 import { format } from '@/lib/format';
@@ -21,6 +24,10 @@ import { TldInput } from './tld-input';
 const INF = Number.POSITIVE_INFINITY;
 /** Shared with the results page, so both show the same currency. */
 const CURRENCY_KEY = 'display-currency';
+/** The signed-in visitor's "AI answers" choice on this browser (FR-INT-015). */
+const AI_KEY = 'ai-answers';
+/** The description typed before following the sign-in link, restored once on return (FR-INT-015). */
+const DRAFT_KEY = 'draft-description';
 
 interface PrefsForm {
   preferredTlds: string[];
@@ -50,7 +57,7 @@ type T = (k: string, v?: Record<string, string | number>) => string;
  * Light checks for instant feedback. The server validates the whole request with the shared schema and answers
  * with field messages, so nothing here is trusted (spec 001 tech §9).
  */
-function toPreferences(f: PrefsForm, t: T, forceSearch = false): { prefs?: Preferences; error?: string } {
+function toPreferences(f: PrefsForm, t: T, aiAnswers: boolean): { prefs?: Preferences; error?: string } {
   const [minLen, maxLen] = intake.maxLabelLengthRange;
   const maxLength = Number(f.maxLength);
   if (!Number.isInteger(maxLength) || maxLength < minLen || maxLength > maxLen) {
@@ -69,7 +76,8 @@ function toPreferences(f: PrefsForm, t: T, forceSearch = false): { prefs?: Prefe
       priceMinCents: Math.round(f.priceMin * 100),
       priceMaxCents: f.priceMax === INF ? null : Math.round(f.priceMax * 100),
       includeFree: true,
-      forceSearch,
+      forceSearch: false,
+      aiAnswers,
     },
   };
 }
@@ -112,18 +120,36 @@ export function SearchForm({
     currency: useId(),
     country: useId(),
     maxLen: useId(),
+    ai: useId(),
+    aiHelp: useId(),
   };
   const [description, setDescription] = useState('');
   const [prefs, setPrefs] = useState<PrefsForm>(DEFAULT_PREFS);
   const [currency, setCurrency] = useState('USD');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [aiOn, setAiOn] = useState(false);
   const human = useRef<HumanCheckHandle>(null);
+  // Guest sessions (saved items without an account) do not count as signed in (spec 002 FR-JEV-018).
+  const session = useAccount((s) => s.session);
+  const signedIn = Boolean(session?.user && !session.user.isAnonymous);
 
-  // "Edit description" from the results page brings the text back from this tab's session (FR-INT-012).
+  // "Edit description" from the results page brings the text back from this tab's session (FR-INT-012); so does
+  // coming back from the sign-in link of the AI answers switch (FR-INT-015).
   useEffect(() => {
     const ref = params.get('edit');
-    if (!ref) return;
+    if (!ref) {
+      try {
+        const draft = sessionStorage.getItem(DRAFT_KEY);
+        if (draft) {
+          sessionStorage.removeItem(DRAFT_KEY);
+          setDescription(draft);
+        }
+      } catch {
+        // storage blocked: nothing to restore
+      }
+      return;
+    }
     void import('@/lib/client/search').then(({ recallInput }) => {
       const saved = recallInput(ref);
       if (saved) setDescription(saved.description);
@@ -144,6 +170,34 @@ export function SearchForm({
         : defaultCurrency(navigator.languages ?? [navigator.language], fx.rates),
     );
   }, [fx.rates]);
+
+  // AI answers: off until a signed-in visitor switches them on; the choice is kept on this browser (FR-INT-015).
+  useEffect(() => {
+    void loadSession();
+    try {
+      setAiOn(localStorage.getItem(AI_KEY) === '1');
+    } catch {
+      // storage blocked: off
+    }
+  }, []);
+
+  function toggleAi() {
+    const next = !aiOn;
+    setAiOn(next);
+    try {
+      localStorage.setItem(AI_KEY, next ? '1' : '0');
+    } catch {
+      // remembered for this page only
+    }
+  }
+
+  function keepDraft() {
+    try {
+      if (description.trim()) sessionStorage.setItem(DRAFT_KEY, description);
+    } catch {
+      // storage blocked: the text is lost on sign-in
+    }
+  }
 
   function chooseCurrency(c: string) {
     setCurrency(c);
@@ -179,7 +233,7 @@ export function SearchForm({
     setError(null);
     if (length < intake.descriptionMin) return setError(t('form.tooShort', { min: intake.descriptionMin }));
     if (tooLong) return setError(t('form.tooLong', { max: intake.descriptionMax }));
-    const { prefs: preferences, error: prefError } = toPreferences(prefs, t);
+    const { prefs: preferences, error: prefError } = toPreferences(prefs, t, signedIn && aiOn);
     if (!preferences) return setError(prefError ?? t('form.errorGeneric'));
     setBusy(true);
     // The streaming client loads on submit, not with the page (NFR-INT-004).
@@ -336,6 +390,47 @@ export function SearchForm({
         </div>
       </div>
       {currency !== 'USD' && <p className="-mt-3 text-xs text-[var(--muted)]">{t('form.priceApprox')}</p>}
+
+      <div
+        className="flex items-start justify-between gap-4 rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] p-3.5"
+        data-testid="ai-answers"
+      >
+        <div className="flex min-w-0 flex-col gap-1">
+          <span id={ids.ai} className="inline-flex items-center gap-1.5 font-semibold">
+            {t('form.aiLabel')}
+            {!signedIn && (
+              <svg viewBox="0 0 16 16" aria-hidden="true" className="h-3.5 w-3.5 text-[var(--muted)]">
+                <path
+                  fill="currentColor"
+                  d="M4.5 7V5a3.5 3.5 0 0 1 7 0v2h.5A1 1 0 0 1 13 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zm1.5 0h4V5a2 2 0 0 0-4 0z"
+                />
+              </svg>
+            )}
+          </span>
+          <span id={ids.aiHelp} className="text-sm text-[var(--muted)]">
+            {t(signedIn ? 'form.aiHelp' : 'form.aiLockedHelp')}
+          </span>
+          {!signedIn && (
+            <Link
+              href={signInHref('/')}
+              onClick={keepDraft}
+              className="self-start text-sm font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+            >
+              {t('form.aiSignIn')} →
+            </Link>
+          )}
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={signedIn && aiOn}
+          aria-labelledby={ids.ai}
+          aria-describedby={ids.aiHelp}
+          disabled={!signedIn}
+          onClick={toggleAi}
+          className="ai-switch mt-0.5"
+        />
+      </div>
 
       <details className="more">
         <summary className="inline-flex cursor-pointer items-center gap-2 font-semibold text-[var(--accent)]">

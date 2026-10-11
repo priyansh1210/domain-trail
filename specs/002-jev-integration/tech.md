@@ -7,7 +7,7 @@
 | Owning packages | `packages/jev` |
 | Contract | [contracts/jev-systemone.schema.json](./contracts/jev-systemone.schema.json) |
 | Catalog | [questions/catalog.md](./questions/catalog.md) |
-| Last updated | 2026-10-03 |
+| Last updated | 2026-10-11 |
 
 ## 1. Components and diagram
 
@@ -202,6 +202,18 @@ Actual usage is measured from `usage.input_tokens`; estimates only drive the pre
   generated via `pnpm jev:catalog:check`.
 - Answers stored with a search include `id@version` so old results remain interpretable.
 
+### 5.10 AI answers only for signed-in accounts (FR-JEV-018 to 021)
+- `PreferencesSchema.aiAnswers` (boolean, default `false`) carries the visitor's switch (spec 001 FR-INT-015).
+- `apps/web/lib/server/ai.ts`: `aiAllowed(user, requested)` is true only when the request asks for it and the
+  session user exists and is not anonymous. `decisionsFor(svc, ai)` returns the live decision service, or
+  `rulesOnly()` from `packages/jev`, which answers no question, makes no network call and reports no degradation;
+  every stage then uses its fallback (FR-JEV-016).
+- `/api/search` replaces `preferences.aiAnswers` with the allowed value before computing the cache key and storing
+  the search, so stored results never cross settings (FR-JEV-020).
+- `/api/search/{ref}/more` and `/refine` apply `aiAllowed()` with the current session and the search's preferences.
+- `degraded` events, the stored `degraded` flag and `recordSearch()` happen only when AI answers were on
+  (FR-JEV-021).
+
 ## 6. External services and free-tier limits
 
 | Service | Used for | Free-tier limit | Source | Verified |
@@ -255,6 +267,8 @@ Datamuse/DoH work).
 | `transport.test.ts` | unit + MSW | retries on 429/529/5xx, none on 401/422, timeout, Retry-After |
 | `breaker.test.ts` | unit | open/half-open/close transitions |
 | `budget.test.ts` | unit | caps block requests, usage recorded once per search |
+| `rules-only.test.ts` | unit | the AI-off service answers nothing, sends nothing, is never degraded |
+| `ai-answers.int.test.ts` | integration | only signed-in accounts with the switch on reach the model; separate cache; no banner when off |
 | `state-privacy.test.ts` | unit | no personal fields in state |
 | `catalog-sync.test.ts` | unit | catalog.md ↔ code catalog consistency |
 | `contract.test.ts` | contract | fixtures validate against `contracts/jev-systemone.schema.json` |
@@ -286,6 +300,10 @@ Metrics (spec 015): tokens/search, degraded-rate, p95 latency per stage, breaker
 | FR-JEV-015 | `eval/`, `weekly-jev-eval.yml` | report file committed to `eval-reports` branch |
 | FR-JEV-016 | `fallback/*` | `fallback.test.ts`, `degraded-mode.int.test.ts` |
 | FR-JEV-017 | per-search answer memo (`Map<hash(question+state), Answer>`) | `memo.test.ts` |
+| FR-JEV-018 | `aiAllowed()`, `decisionsFor()`, `rulesOnly()` | `ai-answers.int.test.ts`, `rules-only.test.ts` |
+| FR-JEV-019 | `aiAllowed()` in the search, more and refine routes | `ai-answers.int.test.ts` |
+| FR-JEV-020 | allowed `aiAnswers` inside `cacheKey()` | `ai-answers.int.test.ts` |
+| FR-JEV-021 | degraded flag and usage only when AI answers were on | `ai-answers.int.test.ts` |
 | NFR-JEV-001 | transport metrics | prod metrics, `live-smoke.test.ts` |
 | NFR-JEV-002 | stage deadlines | `pipeline.perf.test.ts` |
 | NFR-JEV-003 | budget estimates §5.6 | `token-estimate.test.ts` against fixtures' usage |

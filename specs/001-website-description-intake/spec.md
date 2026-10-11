@@ -7,7 +7,7 @@
 | Status | Approved (2026-10-03) |
 | Depends on | 000, 014 (abuse), 003 (clarity check) |
 | Tech file | [tech.md](./tech.md) |
-| Last updated | 2026-10-03 |
+| Last updated | 2026-10-11 |
 
 ## 1. Why (problem and value)
 Everything the product recommends comes from what the user tells us. Most people don't know what makes a
@@ -52,6 +52,13 @@ As a visitor who repeats a search (or shares a link), I want instant results.
 As a real visitor, I don't want puzzles.
 - **Given** a normal browser **When** I submit **Then** the human check passes invisibly in most cases.
 
+### US-7 Choosing AI answers
+As a visitor with an account, I want to choose whether the decision model helps with my search.
+- **Given** I am not signed in **When** I look at the form **Then** the AI answers switch is locked, with a link to
+  sign in that brings me back to the form with my description kept.
+- **Given** I am signed in **When** I open the form the first time **Then** the switch is off; once I switch it on,
+  it stays on for my next visits on this browser.
+
 ## 4. Functional requirements
 
 | ID | Requirement | Priority |
@@ -70,6 +77,7 @@ As a real visitor, I don't want puzzles.
 | FR-INT-012 | The description MUST be kept only in the visitor's browser session for anonymous users (not stored on the server), per spec 013. | MUST |
 | FR-INT-013 | Each search MUST receive a unique, unguessable identifier used in the results page address. | MUST |
 | FR-INT-014 | The form MUST be fully usable with keyboard and screen readers. | MUST |
+| FR-INT-015 | The form MUST show an "AI answers" switch. Visitors who are not signed in (guest sessions included) MUST see it locked with a link to sign in, and the description they typed MUST survive the sign-in round trip within their browser session. For signed-in users it MUST be off by default and remember their choice on that browser. What the switch does is defined in spec 002 (FR-JEV-018 to 021). | MUST |
 
 ## 5. Non-functional requirements
 
@@ -113,3 +121,10 @@ The reviewer questions of the draft were answered by the owner; the answers are 
 |---|---|
 | 1. Are 20–1,000 characters the right limits? | Minimum stays 20; maximum raised to 2,000 characters (FR-INT-002). |
 | 2. Example chips tailored to India or globally neutral? | Globally neutral (FR-INT-003). |
+
+## 11. Owner decisions (2026-10-11)
+
+| Question | Decision |
+|---|---|
+| 1. Who can switch on AI answers? | Signed-in users only; signed-out visitors see the switch locked with a sign-in link (US-7, FR-INT-015). |
+| 2. Default for signed-in users? | Off, remembered per browser once they change it (FR-INT-015). |

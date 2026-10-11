@@ -16,6 +16,7 @@ import { PIPELINE_VERSION, rateLimits, retention } from '@domains-all/config';
 import { log } from '@domains-all/log';
 import { createHash } from 'node:crypto';
 import * as z from 'zod/mini';
+import { aiAllowed } from './ai';
 import type { Bucket } from './limits';
 import { limitKey, resultsStage } from './search';
 import type { Services } from './services';
@@ -64,6 +65,7 @@ export async function handleRefine(
   if (!rec?.features) return json(404, { error: 'expired', message: 'These results have expired.' });
   const prefsParsed = PreferencesSchema.safeParse(rec.prefs ?? {});
   const preferences = prefsParsed.success ? prefsParsed.data : PreferencesSchema.parse({});
+  const ai = aiAllowed(user, preferences.aiAnswers); // the search's setting, if this session may use it (FR-JEV-019)
   const { description, featureEdits } = parsed.data;
   if (!hasEdits(rec.features, featureEdits))
     return json(400, { error: 'no_changes', message: 'Change at least one feature first.' });
@@ -117,10 +119,12 @@ export async function handleRefine(
       profile,
       strictBrand: false,
       seed,
+      ai,
     });
-    await svc.jev
-      .recordSearch({ tokens: r.usage.tokens, requests: r.usage.requests, degraded: Boolean(r.degraded) })
-      .catch(() => undefined);
+    if (ai)
+      await svc.jev
+        .recordSearch({ tokens: r.usage.tokens, requests: r.usage.requests, degraded: Boolean(r.degraded) })
+        .catch(() => undefined);
     log.info({ event: 'search.refine', searchId: id, from: oldId, results: r.stored.results.length });
     if (!persisted) return;
     await svc.store

@@ -41,4 +41,4 @@ Status: ☐ open · ◐ in progress · ☑ done · ⏸ waiting for the owner
 | C2 | Steps with `data-step` / `data-state` (tests no longer read the old "✓" text) | ☑ |
 | C3 | Result rows, sections, filter bar, banners, chips, save controls | ☑ |
 | D1 | End-to-end tests updated for the new markup; 84 pass on desktop and mobile | ☑ |
-| D2 | Owner: review the preview deployment and merge | ⏸ |
+| D2 | Owner: review the preview deployment and merge (#23) | ☑ |

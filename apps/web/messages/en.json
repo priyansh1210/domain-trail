@@ -61,6 +61,10 @@
     "priceBetween": "{min} to {max}",
     "priceNoLimit": "No limit",
     "priceApprox": "Amounts in other currencies are approximate here; the results use today's rates.",
+    "aiLabel": "AI answers",
+    "aiHelp": "Our decision model reads your description and ranks the names. When it is off, simpler built-in rules are used.",
+    "aiLockedHelp": "For signed-in users. Without it, names come from simpler built-in rules.",
+    "aiSignIn": "Sign in to use AI answers",
     "currency": "Show prices in"
   },
   "results": {
