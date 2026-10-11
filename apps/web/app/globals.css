@@ -10,10 +10,17 @@
   --on-accent: #ffffff;
   --warn: #b45309;
   --danger: #b91c1c;
+  /* Logo colours (logos/final/brand.html) */
+  --brand-d: #0f1e33;
+  --brand-t: #0b6a88;
+  --brand-point: #e9a23b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
+    --brand-d: #ffffff;
+    --brand-t: #3fb8da;
+    --brand-point: #f2b451;
     --bg: #0b1120;
     --fg: #f3f4f6;
     --muted: #9ca3af;
@@ -29,6 +36,13 @@
 body {
   background: var(--bg);
   color: var(--fg);
+}
+
+/* The site name beside the logo mark, set in the logo's typeface. */
+.wordmark {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.012em;
 }
 
 a:focus-visible,
