@@ -20,13 +20,13 @@
     "@domains-all/jev": "workspace:*",
     "@domains-all/log": "workspace:*",
     "@domains-all/pricing": "workspace:*",
-    "transliteration": "^2.6.1",
+    "transliteration": "^2.7.0",
     "uuidv7": "^1.2.1",
     "wink-eng-lite-web-model": "^1.8.1",
     "wink-nlp": "^2.4.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.5"
   }
 }
