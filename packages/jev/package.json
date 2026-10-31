@@ -15,10 +15,10 @@
   "dependencies": {
     "@domains-all/config": "workspace:*",
     "@domains-all/log": "workspace:*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "ajv": "^8.20.0",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.5"
   }
 }
